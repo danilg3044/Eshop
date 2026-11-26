@@ -1,0 +1,42 @@
+.auth-card {
+  max-width: 420px;
+  margin: 48px auto;
+}
+
+h1 {
+  margin: 0;
+  font: var(--mat-sys-headline-small);
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  margin-top: 16px;
+}
+
+.form-error {
+  color: var(--mat-sys-error);
+  margin: 0 0 12px;
+}
+
+.or {
+  text-align: center;
+  color: var(--mat-sys-on-surface-variant);
+  margin: 16px 0 8px;
+}
+
+.social {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+mat-divider {
+  margin-top: 24px;
+}
+
+mat-card-actions {
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px 16px;
+}

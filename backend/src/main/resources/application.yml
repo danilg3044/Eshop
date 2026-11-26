@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: eshop
+  datasource:
+    # Override per machine in application-local.yml (profile "local") or with env vars.
+    url: ${ESHOP_DB_URL:jdbc:sqlserver://localhost:1433;databaseName=eshop;encrypt=true;trustServerCertificate=true}
+    username: ${ESHOP_DB_USER:eshop}
+    password: ${ESHOP_DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate          # Flyway owns the schema; Hibernate only checks it matches the entities
+    properties:
+      hibernate:
+        use_nationalized_character_data: true   # map String -> nvarchar (Unicode)
+  # Google / Facebook client registrations live in application-local.yml.
+  # Without them the app still starts; social login is simply unavailable.
+
+server:
+  port: 8080
+
+eshop:
+  frontend-url: ${ESHOP_FRONTEND_URL:http://localhost:4200}
+  jwt:
+    # HS256 key, at least 32 bytes. The default is for local development ONLY.
+    secret: ${ESHOP_JWT_SECRET:dev-only-insecure-jwt-secret-change-me-0123456789}
+    ttl: 8h
+  admin:
+    # The first admin is created at startup if no admin exists and a password is set.
+    email: ${ESHOP_ADMIN_EMAIL:admin@eshop.local}
+    password: ${ESHOP_ADMIN_PASSWORD:}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
