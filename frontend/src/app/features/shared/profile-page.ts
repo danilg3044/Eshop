@@ -1,11 +1,13 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, linkedSignal, signal } from '@angular/core';
 import { form, FormField, FormRoot, maxLength } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { firstValueFrom } from 'rxjs';
-import { AuthService } from '../../core/auth.service';
+import { Store } from '@ngrx/store';
+import { AuthActions } from '../../core/auth/auth.actions';
+import { selectUser } from '../../core/auth/auth.selectors';
 import { errorMessage } from '../../core/errors';
 import { Profile } from '../../core/models';
 import { ShopApi } from '../../core/shop-api';
@@ -31,7 +33,7 @@ const EMPTY: ProfileForm = {
     <mat-card class="narrow">
       <mat-card-header>
         <mat-card-title><h1>My profile</h1></mat-card-title>
-        <mat-card-subtitle>{{ auth.user()?.email }} · signed in with {{ provider() }}</mat-card-subtitle>
+        <mat-card-subtitle>{{ user()?.email }} · signed in with {{ provider() }}</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
         <form [formRoot]="profileForm" class="grid">
@@ -85,10 +87,12 @@ const EMPTY: ProfileForm = {
   `,
 })
 export class ProfilePage {
-  protected readonly auth = inject(AuthService);
+  private readonly store = inject(Store);
   private readonly api = inject(ShopApi);
 
-  private readonly model = signal<ProfileForm>(EMPTY);
+  protected readonly user = this.store.selectSignal(selectUser);
+  /** Follows the stored user (refilled whenever it changes) but stays editable: that's linkedSignal. */
+  private readonly model = linkedSignal<ProfileForm>(() => normalize(this.user()?.profile));
   protected readonly status = signal<{ text: string; error: boolean } | null>(null);
 
   protected readonly profileForm = form(
@@ -105,7 +109,7 @@ export class ProfilePage {
           this.status.set(null);
           try {
             const user = await firstValueFrom(this.api.updateProfile(this.model()));
-            this.auth.user.set(user);
+            this.store.dispatch(AuthActions.userLoaded({ user })); // header, checkout etc. see the change
             this.status.set({ text: 'Profile saved', error: false });
           } catch (err) {
             this.status.set({ text: errorMessage(err), error: true });
@@ -117,23 +121,26 @@ export class ProfilePage {
   );
 
   protected provider(): string {
-    return (this.auth.user()?.provider ?? 'LOCAL').toLowerCase().replace('local', 'email & password');
+    return (this.user()?.provider ?? 'LOCAL').toLowerCase().replace('local', 'email & password');
   }
 
   constructor() {
-    this.auth.loadCurrentUser().subscribe((u) => this.model.set(this.normalize(u.profile)));
+    this.store.dispatch(AuthActions.loadUser()); // show the latest server copy
   }
+}
 
-  /** Turn nulls from the server into ''. */
-  private normalize(p: Profile): ProfileForm {
-    return {
-      firstName: p.firstName ?? '',
-      lastName: p.lastName ?? '',
-      phone: p.phone ?? '',
-      addressLine: p.addressLine ?? '',
-      city: p.city ?? '',
-      postalCode: p.postalCode ?? '',
-      country: p.country ?? '',
-    };
+/** Turn nulls from the server into ''. */
+function normalize(p: Profile | undefined): ProfileForm {
+  if (!p) {
+    return EMPTY;
   }
+  return {
+    firstName: p.firstName ?? '',
+    lastName: p.lastName ?? '',
+    phone: p.phone ?? '',
+    addressLine: p.addressLine ?? '',
+    city: p.city ?? '',
+    postalCode: p.postalCode ?? '',
+    country: p.country ?? '',
+  };
 }

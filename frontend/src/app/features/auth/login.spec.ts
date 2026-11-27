@@ -1,23 +1,36 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router, provideRouter } from '@angular/router';
+import { provideRouter } from '@angular/router';
+import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { vi } from 'vitest';
-import { fakeJwt } from '../../testing/fake-jwt';
+import { AuthActions } from '../../core/auth/auth.actions';
+import { initialAuthState } from '../../core/auth/auth.reducer';
 import { Login } from './login';
 
+/**
+ * The page only dispatches actions and renders store state, so it is tested with a MockStore:
+ * no effects, no navigation. (What happens after the dispatch is covered by auth.effects.spec.ts.)
+ */
 describe('Login', () => {
   let fixture: ComponentFixture<Login>;
   let http: HttpTestingController;
+  let store: MockStore;
   let el: HTMLElement;
 
   async function render(returnUrl?: string) {
-    sessionStorage.clear();
     TestBed.configureTestingModule({
       imports: [Login],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideMockStore({ initialState: { auth: initialAuthState } }),
+      ],
     });
     http = TestBed.inject(HttpTestingController);
+    store = TestBed.inject(MockStore);
+    vi.spyOn(store, 'dispatch');
     fixture = TestBed.createComponent(Login);
     if (returnUrl) {
       fixture.componentRef.setInput('returnUrl', returnUrl);
@@ -39,10 +52,8 @@ describe('Login', () => {
     await fixture.whenStable();
   }
 
-  /** Lets the async submit action finish (it resolves a few microtasks after the HTTP flush). */
-  async function settle() {
-    await fixture.whenStable();
-    await new Promise((resolve) => setTimeout(resolve));
+  async function setAuthState(patch: Partial<typeof initialAuthState>) {
+    store.setState({ auth: { ...initialAuthState, ...patch } });
     await fixture.whenStable();
   }
 
@@ -63,42 +74,42 @@ describe('Login', () => {
     expect(el.querySelector('a[data-provider]')).toBeNull();
   });
 
-  it('shows validation errors and does not call the server for an empty form', async () => {
+  it('clears an error left over from an earlier attempt when opened', async () => {
+    await render();
+
+    expect(store.dispatch).toHaveBeenCalledWith(AuthActions.clearError());
+  });
+
+  it('shows validation errors and does not dispatch a login for an empty form', async () => {
     await render();
     await submit();
 
     expect(el.textContent).toContain('Email is required');
     expect(el.textContent).toContain('Password is required');
-    http.expectNone('/api/auth/login');
+    expect(store.dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: AuthActions.login.type }));
   });
 
-  it('signs in and navigates to the return URL', async () => {
+  it('dispatches a login with the return URL', async () => {
     await render('/checkout');
-    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
 
     type('input[type=email]', 'dana@example.com');
     type('input[type=password]', 'Secret123!');
     await submit();
 
-    http.expectOne('/api/auth/login').flush({ accessToken: fakeJwt(), expiresAt: '2030-01-01T00:00:00Z' });
-    http.expectOne('/api/auth/me').flush({ id: 1, email: 'dana@example.com', role: 'USER', profile: {} });
-    await settle();
-
-    expect(navigate).toHaveBeenCalledWith('/checkout');
+    expect(store.dispatch).toHaveBeenCalledWith(
+      AuthActions.login({ email: 'dana@example.com', password: 'Secret123!', returnUrl: '/checkout' }),
+    );
   });
 
-  it('shows the server error for wrong credentials', async () => {
+  it('disables the button while signing in and shows the error from the store', async () => {
     await render();
-    type('input[type=email]', 'dana@example.com');
-    type('input[type=password]', 'wrong');
-    await submit();
+    const button = el.querySelector<HTMLButtonElement>('button[type=submit]')!;
 
-    http.expectOne('/api/auth/login').flush(
-      { status: 401, detail: 'Invalid email or password' },
-      { status: 401, statusText: 'Unauthorized' },
-    );
-    await settle();
+    await setAuthState({ pending: true });
+    expect(button.disabled).toBe(true);
 
+    await setAuthState({ pending: false, error: 'Invalid email or password' });
+    expect(button.disabled).toBe(false);
     expect(el.querySelector('[role=alert]')?.textContent).toContain('Invalid email or password');
   });
 });

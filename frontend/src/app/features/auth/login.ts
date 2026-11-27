@@ -6,10 +6,12 @@ import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { Router, RouterLink } from '@angular/router';
-import { catchError, firstValueFrom, of } from 'rxjs';
-import { AuthService } from '../../core/auth.service';
-import { errorMessage } from '../../core/errors';
+import { RouterLink } from '@angular/router';
+import { Store } from '@ngrx/store';
+import { catchError, of } from 'rxjs';
+import { AuthActions } from '../../core/auth/auth.actions';
+import { AuthApi } from '../../core/auth/auth-api';
+import { selectAuthError, selectAuthPending } from '../../core/auth/auth.selectors';
 import { FieldError } from '../shared/field-error';
 
 /**
@@ -44,7 +46,7 @@ import { FieldError } from '../shared/field-error';
           @if (error()) {
             <p class="form-error" role="alert">{{ error() }}</p>
           }
-          <button mat-flat-button type="submit" [disabled]="loginForm().submitting()">Sign in</button>
+          <button mat-flat-button type="submit" [disabled]="pending()">Sign in</button>
         </form>
 
         @if (!forAdmin() && providers().length) {
@@ -52,7 +54,7 @@ import { FieldError } from '../shared/field-error';
           <p class="or">or continue with</p>
           <div class="social">
             @for (p of providers(); track p) {
-              <a mat-stroked-button [href]="auth.socialLoginUrl(p)" [attr.data-provider]="p">{{ label(p) }}</a>
+              <a mat-stroked-button [href]="api.socialLoginUrl(p)" [attr.data-provider]="p">{{ label(p) }}</a>
             }
           </div>
         }
@@ -68,15 +70,17 @@ import { FieldError } from '../shared/field-error';
   styleUrl: './auth.scss',
 })
 export class Login {
-  protected readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
+  private readonly store = inject(Store);
+  protected readonly api = inject(AuthApi);
 
   /** Where to go after signing in (set by the guards). Bound from the query string. */
   readonly returnUrl = input<string>();
 
   protected readonly forAdmin = computed(() => this.returnUrl()?.startsWith('/admin') ?? false);
-  protected readonly error = signal<string | null>(null);
-  protected readonly providers = toSignal(this.auth.providers().pipe(catchError(() => of<string[]>([]))), {
+  // The sign-in itself runs in AuthEffects; the page only shows its progress and outcome.
+  protected readonly pending = this.store.selectSignal(selectAuthPending);
+  protected readonly error = this.store.selectSignal(selectAuthError);
+  protected readonly providers = toSignal(this.api.providers().pipe(catchError(() => of<string[]>([]))), {
     initialValue: [],
   });
 
@@ -90,21 +94,19 @@ export class Login {
     },
     {
       submission: {
+        // Only runs when the form is valid. Success navigates (AuthEffects); failure sets the store's error.
         action: async () => {
-          this.error.set(null);
-          try {
-            const { email, password } = this.model();
-            const user = await firstValueFrom(this.auth.login(email, password));
-            const fallback = user.role === 'ADMIN' ? '/admin' : '/';
-            await this.router.navigateByUrl(this.returnUrl() || fallback);
-          } catch (err) {
-            this.error.set(errorMessage(err, 'Sign in failed'));
-          }
+          const { email, password } = this.model();
+          this.store.dispatch(AuthActions.login({ email, password, returnUrl: this.returnUrl() ?? null }));
           return undefined;
         },
       },
     },
   );
+
+  constructor() {
+    this.store.dispatch(AuthActions.clearError()); // don't show an error left over from an earlier attempt
+  }
 
   protected label(provider: string): string {
     return provider.charAt(0).toUpperCase() + provider.slice(1);

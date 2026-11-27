@@ -43,6 +43,25 @@ test('a new customer registers, buys two products and sees the order', async ({ 
   await expect(page.getByTestId('order')).toContainText('PENDING');
 });
 
+test('the session survives a reload and ends on sign out', async ({ page }) => {
+  const customer = newCustomer();
+  await registerCustomer(page, customer);
+
+  // Reload: the token comes back from sessionStorage and the user record is loaded again.
+  await page.goto('/profile');
+  await expect(page.getByTestId('account-menu')).toContainText(customer.email);
+  await expect(page.getByLabel('Last name')).toHaveValue(customer.lastName);
+
+  await page.getByTestId('account-menu').click();
+  await page.getByRole('menuitem', { name: 'Sign out' }).click();
+  await expect(page).toHaveURL('/');
+  await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible();
+
+  // Signed out for real: protected pages send you to the login page again.
+  await page.goto('/orders');
+  await expect(page).toHaveURL(/\/login\?returnUrl=%2Forders/);
+});
+
 test('customers cannot open the back office', async ({ page }) => {
   await registerCustomer(page, newCustomer());
   await page.goto('/admin');

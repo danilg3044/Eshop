@@ -4,10 +4,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { Router, RouterLink } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
-import { AuthService } from '../../core/auth.service';
-import { errorMessage } from '../../core/errors';
+import { RouterLink } from '@angular/router';
+import { Store } from '@ngrx/store';
+import { AuthActions } from '../../core/auth/auth.actions';
+import { Registration } from '../../core/auth/auth.models';
+import { selectAuthError, selectAuthPending } from '../../core/auth/auth.selectors';
 import { FieldError } from '../shared/field-error';
 
 /** Customer self-registration (admins are never created here). Signs the user in on success. */
@@ -49,7 +50,7 @@ import { FieldError } from '../shared/field-error';
           @if (error()) {
             <p class="form-error" role="alert">{{ error() }}</p>
           }
-          <button mat-flat-button type="submit" [disabled]="registerForm().submitting()">Create account</button>
+          <button mat-flat-button type="submit" [disabled]="pending()">Create account</button>
         </form>
       </mat-card-content>
       <mat-card-actions>
@@ -61,13 +62,13 @@ import { FieldError } from '../shared/field-error';
   styleUrl: './auth.scss',
 })
 export class Register {
-  private readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
+  private readonly store = inject(Store);
 
   readonly returnUrl = input<string>();
-  protected readonly error = signal<string | null>(null);
+  protected readonly pending = this.store.selectSignal(selectAuthPending);
+  protected readonly error = this.store.selectSignal(selectAuthError);
 
-  private readonly model = signal({ firstName: '', lastName: '', email: '', password: '' });
+  private readonly model = signal<Registration>({ firstName: '', lastName: '', email: '', password: '' });
   protected readonly registerForm = form(
     this.model,
     (p) => {
@@ -82,17 +83,16 @@ export class Register {
     },
     {
       submission: {
+        // Success signs the user in and navigates (AuthEffects); failure sets the store's error.
         action: async () => {
-          this.error.set(null);
-          try {
-            await firstValueFrom(this.auth.register(this.model()));
-            await this.router.navigateByUrl(this.returnUrl() || '/');
-          } catch (err) {
-            this.error.set(errorMessage(err, 'Registration failed'));
-          }
+          this.store.dispatch(AuthActions.register({ registration: this.model(), returnUrl: this.returnUrl() ?? null }));
           return undefined;
         },
       },
     },
   );
+
+  constructor() {
+    this.store.dispatch(AuthActions.clearError());
+  }
 }

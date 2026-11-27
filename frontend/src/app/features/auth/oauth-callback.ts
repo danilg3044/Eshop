@@ -1,9 +1,10 @@
-import { Component, OnInit, inject, input, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Router, RouterLink } from '@angular/router';
-import { AuthService } from '../../core/auth.service';
-import { errorMessage } from '../../core/errors';
+import { RouterLink } from '@angular/router';
+import { Store } from '@ngrx/store';
+import { AuthActions } from '../../core/auth/auth.actions';
+import { selectAuthError } from '../../core/auth/auth.selectors';
 
 /**
  * Landing page after Google/Facebook login. The backend redirects here with either
@@ -30,23 +31,24 @@ import { errorMessage } from '../../core/errors';
   `,
 })
 export class OAuthCallback implements OnInit {
-  private readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
+  private readonly store = inject(Store);
 
   readonly code = input<string>();
   readonly error = input<string>();
 
-  protected readonly failure = signal<string | null>(null);
+  /** A problem we see in the URL itself, before asking the server. */
+  private readonly urlProblem = signal<string | null>(null);
+  private readonly exchangeError = this.store.selectSignal(selectAuthError);
+  /** Either that, or the exchange failing (store error, set by AuthEffects). */
+  protected readonly failure = computed(() => this.urlProblem() ?? this.exchangeError());
 
   ngOnInit(): void {
     const code = this.code();
     if (this.error() || !code) {
-      this.failure.set(this.error() || 'No login code was received.');
+      this.urlProblem.set(this.error() || 'No login code was received.');
       return;
     }
-    this.auth.exchangeCode(code).subscribe({
-      next: () => void this.router.navigateByUrl('/', { replaceUrl: true }),
-      error: (err: unknown) => this.failure.set(errorMessage(err, 'The login link has expired. Please try again.')),
-    });
+    // AuthEffects trades the code for a JWT, loads the user and navigates on success.
+    this.store.dispatch(AuthActions.exchangeCode({ code }));
   }
 }

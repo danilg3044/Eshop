@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { adminGuard, authGuard } from './core/auth.guards';
+import { adminGuard, authGuard } from './core/auth/auth.guards';
 import { ShopLayout } from './features/shop/shop-layout';
 
 export const routes: Routes = [

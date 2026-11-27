@@ -1,17 +1,18 @@
-import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree, provideRouter } from '@angular/router';
-import { fakeJwt } from '../testing/fake-jwt';
+import { provideMockStore } from '@ngrx/store/testing';
+import { fakeJwt } from '../../testing/fake-jwt';
+import { Role } from '../models';
 import { adminGuard, authGuard } from './auth.guards';
-import { Role } from './models';
+import { initialAuthState } from './auth.reducer';
 
 describe('route guards', () => {
+  /** Guards only read the store, so a MockStore with the right state is all they need. */
   function run(guard: typeof authGuard, role: Role | null, url = '/admin/orders') {
-    sessionStorage.clear();
-    if (role) {
-      sessionStorage.setItem('eshop.token', fakeJwt({ role }));
-    }
-    TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient()] });
+    const token = role ? fakeJwt({ role }) : null;
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), provideMockStore({ initialState: { auth: { ...initialAuthState, token } } })],
+    });
     return TestBed.runInInjectionContext(() =>
       guard({} as ActivatedRouteSnapshot, { url } as RouterStateSnapshot),
     );

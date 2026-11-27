@@ -4,8 +4,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
-import { AuthService } from '../../core/auth.service';
+import { RouterLink, RouterOutlet } from '@angular/router';
+import { AuthActions } from '../../core/auth/auth.actions';
+import { selectEmail, selectIsAdmin, selectIsLoggedIn } from '../../core/auth/auth.selectors';
 import { Store } from '@ngrx/store';
 import { selectCartCount } from '../../core/cart/cart.selectors';
 
@@ -20,14 +21,14 @@ import { selectCartCount } from '../../core/cart/cart.selectors';
       <a mat-icon-button routerLink="/cart" aria-label="Shopping cart, {{ cartCount() }} items">
         <mat-icon [matBadge]="cartCount() || null" matBadgeColor="accent" aria-hidden="false">shopping_cart</mat-icon>
       </a>
-      @if (auth.isLoggedIn()) {
+      @if (isLoggedIn()) {
         <button mat-button [matMenuTriggerFor]="account" data-testid="account-menu">
-          <mat-icon>account_circle</mat-icon> {{ auth.email() }}
+          <mat-icon>account_circle</mat-icon> {{ email() }}
         </button>
         <mat-menu #account="matMenu">
           <a mat-menu-item routerLink="/orders">My orders</a>
           <a mat-menu-item routerLink="/profile">Profile</a>
-          @if (auth.isAdmin()) {
+          @if (isAdmin()) {
             <a mat-menu-item routerLink="/admin">Back office</a>
           }
           <button mat-menu-item (click)="logout()">Sign out</button>
@@ -58,12 +59,13 @@ import { selectCartCount } from '../../core/cart/cart.selectors';
   `,
 })
 export class ShopLayout {
-  protected readonly auth = inject(AuthService);
-  protected readonly cartCount = inject(Store).selectSignal(selectCartCount);
-  private readonly router = inject(Router);
+  private readonly store = inject(Store);
+  protected readonly isLoggedIn = this.store.selectSignal(selectIsLoggedIn);
+  protected readonly isAdmin = this.store.selectSignal(selectIsAdmin);
+  protected readonly email = this.store.selectSignal(selectEmail);
+  protected readonly cartCount = this.store.selectSignal(selectCartCount);
 
   protected logout(): void {
-    this.auth.logout();
-    void this.router.navigateByUrl('/');
+    this.store.dispatch(AuthActions.logout()); // AuthEffects clears storage and goes to the shop home
   }
 }

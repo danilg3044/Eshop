@@ -1,11 +1,12 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { AuthService } from './auth.service';
+import { Store } from '@ngrx/store';
+import { selectIsAdmin, selectIsLoggedIn } from './auth.selectors';
 
 /** Lets signed-in users through; everyone else goes to /login and comes back afterwards. */
 export const authGuard: CanActivateFn = (_route, state) => {
-  const auth = inject(AuthService);
-  return auth.isLoggedIn()
+  const isLoggedIn = inject(Store).selectSignal(selectIsLoggedIn);
+  return isLoggedIn()
     ? true
     : inject(Router).createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
 };
@@ -15,12 +16,12 @@ export const authGuard: CanActivateFn = (_route, state) => {
  * This only hides the UI; the server enforces the ADMIN role on every /api/admin call.
  */
 export const adminGuard: CanActivateFn = (_route, state) => {
-  const auth = inject(AuthService);
+  const store = inject(Store);
   const router = inject(Router);
-  if (auth.isAdmin()) {
+  if (store.selectSignal(selectIsAdmin)()) {
     return true;
   }
-  return auth.isLoggedIn()
+  return store.selectSignal(selectIsLoggedIn)()
     ? router.createUrlTree(['/'])
     : router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
 };

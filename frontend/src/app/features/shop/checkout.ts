@@ -1,5 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, linkedSignal, signal } from '@angular/core';
 import { form, FormField, FormRoot, maxLength, required } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -7,12 +7,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { AuthService } from '../../core/auth.service';
 import { Store } from '@ngrx/store';
+import { selectProfile } from '../../core/auth/auth.selectors';
 import { CartActions } from '../../core/cart/cart.actions';
 import { selectCartIsEmpty, selectCartLines, selectCartTotal, selectOrderItems } from '../../core/cart/cart.selectors';
 import { errorMessage } from '../../core/errors';
-import { ShippingAddress } from '../../core/models';
+import { Profile, ShippingAddress } from '../../core/models';
 import { ShopApi } from '../../core/shop-api';
 import { FieldError } from '../shared/field-error';
 
@@ -101,12 +101,13 @@ export class Checkout {
   protected readonly total = this.store.selectSignal(selectCartTotal);
   protected readonly isEmpty = this.store.selectSignal(selectCartIsEmpty);
   private readonly orderItems = this.store.selectSignal(selectOrderItems);
-  private readonly auth = inject(AuthService);
   private readonly api = inject(ShopApi);
   private readonly router = inject(Router);
 
   protected readonly error = signal<string | null>(null);
-  private readonly model = signal<ShippingAddress>({ name: '', addressLine: '', city: '', postalCode: '', country: '' });
+  /** Pre-filled from the profile in the store, then edited freely. */
+  private readonly profile = this.store.selectSignal(selectProfile);
+  private readonly model = linkedSignal<ShippingAddress>(() => shippingFrom(this.profile()));
 
   protected readonly shippingForm = form(
     this.model,
@@ -124,8 +125,7 @@ export class Checkout {
         action: async () => {
           this.error.set(null);
           try {
-            const items = this.lines().map((l) => ({ productId: l.productId, quantity: l.quantity }));
-            const order = await firstValueFrom(this.api.placeOrder(items, this.model()));
+            const order = await firstValueFrom(this.api.placeOrder(this.orderItems(), this.model()));
             this.store.dispatch(CartActions.clear());
             await this.router.navigate(['/orders'], { queryParams: { placed: order.id } });
           } catch (err) {
@@ -136,18 +136,14 @@ export class Checkout {
       },
     },
   );
+}
 
-  constructor() {
-    // Pre-fill the address from the user's profile.
-    this.auth.loadCurrentUser().subscribe((u) => {
-      const p = u.profile;
-      this.model.set({
-        name: [p.firstName, p.lastName].filter(Boolean).join(' '),
-        addressLine: p.addressLine ?? '',
-        city: p.city ?? '',
-        postalCode: p.postalCode ?? '',
-        country: p.country ?? '',
-      });
-    });
-  }
+function shippingFrom(p: Profile | null): ShippingAddress {
+  return {
+    name: [p?.firstName, p?.lastName].filter(Boolean).join(' '),
+    addressLine: p?.addressLine ?? '',
+    city: p?.city ?? '',
+    postalCode: p?.postalCode ?? '',
+    country: p?.country ?? '',
+  };
 }

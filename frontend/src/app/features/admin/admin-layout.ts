@@ -4,8 +4,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { AuthService } from '../../core/auth.service';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Store } from '@ngrx/store';
+import { AuthActions } from '../../core/auth/auth.actions';
+import { selectEmail } from '../../core/auth/auth.selectors';
 
 /** Back-office frame: dark toolbar + side navigation, visually distinct from the shop. */
 @Component({
@@ -16,7 +18,7 @@ import { AuthService } from '../../core/auth.service';
       <mat-icon aria-hidden="true">admin_panel_settings</mat-icon>
       <span class="title">EShop back office</span>
       <span class="spacer"></span>
-      <span class="who">{{ auth.email() }}</span>
+      <span class="who">{{ email() }}</span>
       <a mat-button routerLink="/">View shop</a>
       <button mat-button (click)="logout()">Sign out</button>
     </mat-toolbar>
@@ -55,11 +57,10 @@ import { AuthService } from '../../core/auth.service';
   `,
 })
 export class AdminLayout {
-  protected readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
+  private readonly store = inject(Store);
+  protected readonly email = this.store.selectSignal(selectEmail);
 
   protected logout(): void {
-    this.auth.logout();
-    void this.router.navigateByUrl('/');
+    this.store.dispatch(AuthActions.logout());
   }
 }

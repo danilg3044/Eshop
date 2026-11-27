@@ -81,9 +81,9 @@ Account rules:
 Admin endpoints are protected twice: by the URL rule `/api/admin/**` and by `@PreAuthorize` on `AdminController`.
 
 In the frontend:
-- `AuthService` reads the role from the JWT payload, so guards work synchronously.
-- `auth.interceptor` adds the Bearer token and logs the user out on a 401.
-- The guards (`auth.guards.ts`) only hide the UI; the server is the authority.
+- The session lives in the NgRx store (`core/auth/`). See "NgRx" under the frontend layout.
+- Selectors decode the role from the JWT payload, so the guards (`auth.guards.ts`) work synchronously. The guards only hide UI; the server is the authority.
+- `auth.interceptor` adds the stored Bearer token, unless the request already has an `Authorization` header (as `AuthApi.me(token)` does during sign-in). It dispatches `sessionExpired` on a 401 from an authenticated call other than login/register/exchange.
 
 ### Backend layout (package by feature, `com.example.eshop`)
 
@@ -162,8 +162,28 @@ Patterns used throughout:
 - Forms use **Signal Forms**: `form(model, schema, { submission: { action } })` with `<form [formRoot]>` and `[formField]`.
 - Text inputs must bind to `string` fields, not `string | null`.
 - Route params and query params arrive as `input()`s via `withComponentInputBinding()`.
-- The cart is client-side only and lives in the **NgRx Store** (`core/cart/`: actions, `cartFeature` reducer, selectors, `CartEffects`). Components read with `store.selectSignal(selectX)` and write with `store.dispatch(CartActions.x(...))`. The reducer stays pure: `CartEffects` restores from localStorage on `ROOT_EFFECTS_INIT` and saves after every change. The server re-validates stock when the order is placed. The store is registered in `app.config.ts` (`provideStore`, `provideState`, `provideEffects`, `provideStoreDevtools`). Other state (auth, page data) still uses signals and `httpResource`; move it to NgRx only on purpose.
+- **NgRx Store** (classic: actions, reducers, selectors, effects) holds the session and the cart:
+  - Each slice lives in its own folder:
+    - `core/auth/`: `AuthActions`, `authFeature`, selectors, `AuthEffects`, and `AuthApi` for the stateless HTTP calls.
+    - `core/cart/`: `CartActions`, `cartFeature`, selectors, `CartEffects`.
+  - Both are registered in `app.config.ts`.
+  - Components read with `store.selectSignal(selectX)` and write with `store.dispatch(XActions.y(...))`.
+  - Reducers and selectors stay pure: no `Date.now()`, no storage. Effects do HTTP, storage and navigation:
+    - Auth: on `ROOT_EFFECTS_INIT`, restore the token from sessionStorage (expired tokens are dropped), then `loadUser`.
+    - Auth: after `signInSucceeded`, navigate to `returnUrl`, or to `/admin` for admins and `/` for everyone else.
+    - Auth: a `timer` fires `sessionExpired` at the JWT's `exp`. It runs inside `switchMap`, so a new session or a logout cancels it.
+    - Auth: login, register and exchange use `exhaustMap`, so double submits are ignored.
+    - Cart: restore from and save to localStorage.
+  - The auth pages only dispatch actions and render `selectAuthPending` and `selectAuthError`. They dispatch `clearError` when opened.
+  - Profile and checkout form models are `linkedSignal`s over the stored user.
+  - `maskSecrets` keeps passwords out of the Redux DevTools action log.
+  - Page data still uses `httpResource`. Move state to NgRx only on purpose.
+- The cart is client-side only. The server re-validates stock when the order is placed.
 
 Testing notes:
 - In unit tests, don't `await fixture.whenStable()` while an `httpResource` request is still unflushed; it waits forever. Use `TestBed.tick()`, flush, then `whenStable()`.
+- NgRx tests:
+  - Reducers and selectors are plain function calls; no TestBed needed.
+  - Effects use `provideMockActions` with fake `AuthApi`/`Router` values. Timers use `vi.useFakeTimers()`.
+  - Components, guards and the interceptor use `provideMockStore({ initialState: { auth: {...initialAuthState, token} } })` and spy on `store.dispatch`.
 - E2E tests create a fresh customer per test and assume the seeded admin (`admin@eshop.local` / `Admin123!`, overridable with `E2E_ADMIN_*`).
