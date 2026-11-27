@@ -8,7 +8,9 @@ import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
-import { CartService } from '../../core/cart.service';
+import { Store } from '@ngrx/store';
+import { CartActions } from '../../core/cart/cart.actions';
+import { selectCartIsEmpty, selectCartLines, selectCartTotal, selectOrderItems } from '../../core/cart/cart.selectors';
 import { errorMessage } from '../../core/errors';
 import { ShippingAddress } from '../../core/models';
 import { ShopApi } from '../../core/shop-api';
@@ -20,7 +22,7 @@ import { FieldError } from '../shared/field-error';
   imports: [CurrencyPipe, RouterLink, FormField, FormRoot, FieldError, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule],
   template: `
     <h1>Checkout</h1>
-    @if (cart.isEmpty()) {
+    @if (isEmpty()) {
       <p>Your cart is empty. <a routerLink="/">Continue shopping</a></p>
     } @else {
       <div class="layout">
@@ -61,11 +63,11 @@ import { FieldError } from '../shared/field-error';
           <mat-card-header><mat-card-title><h2>Order summary</h2></mat-card-title></mat-card-header>
           <mat-card-content>
             <ul class="summary">
-              @for (l of cart.lines(); track l.productId) {
+              @for (l of lines(); track l.productId) {
                 <li><span>{{ l.quantity }} × {{ l.name }}</span><span>{{ l.price * l.quantity | currency }}</span></li>
               }
             </ul>
-            <p class="total">Total: {{ cart.total() | currency }}</p>
+            <p class="total">Total: {{ total() | currency }}</p>
             <p class="note">Payment is simulated: the order is created as PENDING and handled by the store.</p>
             @if (error()) {
               <p class="error" role="alert">{{ error() }}</p>
@@ -94,7 +96,11 @@ import { FieldError } from '../shared/field-error';
   `,
 })
 export class Checkout {
-  protected readonly cart = inject(CartService);
+  private readonly store = inject(Store);
+  protected readonly lines = this.store.selectSignal(selectCartLines);
+  protected readonly total = this.store.selectSignal(selectCartTotal);
+  protected readonly isEmpty = this.store.selectSignal(selectCartIsEmpty);
+  private readonly orderItems = this.store.selectSignal(selectOrderItems);
   private readonly auth = inject(AuthService);
   private readonly api = inject(ShopApi);
   private readonly router = inject(Router);
@@ -118,9 +124,9 @@ export class Checkout {
         action: async () => {
           this.error.set(null);
           try {
-            const items = this.cart.lines().map((l) => ({ productId: l.productId, quantity: l.quantity }));
+            const items = this.lines().map((l) => ({ productId: l.productId, quantity: l.quantity }));
             const order = await firstValueFrom(this.api.placeOrder(items, this.model()));
-            this.cart.clear();
+            this.store.dispatch(CartActions.clear());
             await this.router.navigate(['/orders'], { queryParams: { placed: order.id } });
           } catch (err) {
             this.error.set(errorMessage(err, 'Could not place the order'));

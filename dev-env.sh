@@ -9,6 +9,7 @@ export JAVA_HOME="/c/Program Files/Java/jdk-27"
 export JAVA_TOOL_OPTIONS="-Djavax.net.ssl.trustStoreType=Windows-ROOT"
 # Playwright browsers live inside the project, not in the per-user cache.
 export PLAYWRIGHT_BROWSERS_PATH="$ESHOP_ROOT/.tools/ms-playwright"
-export PATH="$ESHOP_ROOT/.tools/node:$ESHOP_ROOT/.tools/mssql-jdbc-auth:$ESHOP_ROOT/maven/bin:$JAVA_HOME/bin:$PATH"
+# frontend/node_modules/.bin first, so "ng" is the project's Angular CLI, not a global one.
+export PATH="$ESHOP_ROOT/frontend/node_modules/.bin:$ESHOP_ROOT/.tools/node:$ESHOP_ROOT/.tools/mssql-jdbc-auth:$ESHOP_ROOT/maven/bin:$JAVA_HOME/bin:$PATH"
 
 echo "EShop dev env: node $(node -v), $(java -version 2>&1 | grep -m1 ' version'), $(mvn -v 2>/dev/null | grep -m1 'Apache Maven')"

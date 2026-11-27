@@ -118,6 +118,11 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<!-- Native DLL for SQL Server Windows authentication (integratedSecurity=true),
+					     so "mvn spring-boot:run" works without the folder being on PATH. -->
+					<jvmArguments>-Djava.library.path=${project.basedir}/../.tools/mssql-jdbc-auth</jvmArguments>
+				</configuration>
 			</plugin>
 			<!-- Unit + slice tests (*Test.java) run in "mvn test"; Testcontainers tests (*IT.java) run in "mvn verify". -->
 			<plugin>

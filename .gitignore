@@ -2,3 +2,6 @@
 /maven/
 /.tools/
 .metadata/
+/db/EShop_log.ldf
+/db/EShop.mdf
+/frontend/package-lock.json

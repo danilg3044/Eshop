@@ -10,9 +10,11 @@ $env:JAVA_TOOL_OPTIONS = '-Djavax.net.ssl.trustStoreType=Windows-ROOT'
 # Playwright browsers live inside the project, not in the per-user cache.
 $env:PLAYWRIGHT_BROWSERS_PATH = "$root\.tools\ms-playwright"
 # .tools\mssql-jdbc-auth holds the DLL for Windows authentication to SQL Server (Java finds native DLLs via PATH).
-$env:PATH = "$root\.tools\node;$root\.tools\mssql-jdbc-auth;$root\maven\bin;$env:JAVA_HOME\bin;$env:PATH"
+# frontend\node_modules\.bin comes first, so "ng" is the project's Angular CLI, not a global one.
+$env:PATH = "$root\frontend\node_modules\.bin;$root\.tools\node;$root\.tools\mssql-jdbc-auth;$root\maven\bin;$env:JAVA_HOME\bin;$env:PATH"
 
 Write-Host "EShop dev env:" -ForegroundColor Green
 Write-Host "  node  $(node -v)"
+Write-Host "  ng    $((Get-Command ng -ErrorAction SilentlyContinue).Source)"
 Write-Host "  java  $(& java -version 2>&1 | Select-String ' version' | Select-Object -First 1)"
 Write-Host "  mvn   $(& mvn -v 2>$null | Select-String 'Apache Maven' | Select-Object -First 1)"

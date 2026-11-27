@@ -3,14 +3,16 @@ import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
-import { CartService } from '../../core/cart.service';
+import { Store } from '@ngrx/store';
+import { CartActions } from '../../core/cart/cart.actions';
+import { selectCartIsEmpty, selectCartLines, selectCartTotal } from '../../core/cart/cart.selectors';
 
 @Component({
   selector: 'app-cart',
   imports: [CurrencyPipe, RouterLink, MatButtonModule, MatIconModule],
   template: `
     <h1>Shopping cart</h1>
-    @if (cart.isEmpty()) {
+    @if (isEmpty()) {
       <p>Your cart is empty.</p>
       <a mat-flat-button routerLink="/">Browse products</a>
     } @else {
@@ -19,22 +21,22 @@ import { CartService } from '../../core/cart.service';
           <tr><th scope="col">Product</th><th scope="col">Price</th><th scope="col">Quantity</th><th scope="col">Total</th><th scope="col"><span class="visually-hidden">Remove</span></th></tr>
         </thead>
         <tbody>
-          @for (l of cart.lines(); track l.productId) {
+          @for (l of lines(); track l.productId) {
             <tr data-testid="cart-line">
               <td><a [routerLink]="['/products', l.productId]">{{ l.name }}</a></td>
               <td>{{ l.price | currency }}</td>
               <td class="qty">
-                <button mat-icon-button (click)="cart.setQuantity(l.productId, l.quantity - 1)" [attr.aria-label]="'Decrease ' + l.name">
+                <button mat-icon-button (click)="setQuantity(l.productId, l.quantity - 1)" [attr.aria-label]="'Decrease ' + l.name">
                   <mat-icon>remove</mat-icon>
                 </button>
                 <span aria-live="polite">{{ l.quantity }}</span>
-                <button mat-icon-button [disabled]="l.quantity >= l.stock" (click)="cart.setQuantity(l.productId, l.quantity + 1)" [attr.aria-label]="'Increase ' + l.name">
+                <button mat-icon-button [disabled]="l.quantity >= l.stock" (click)="setQuantity(l.productId, l.quantity + 1)" [attr.aria-label]="'Increase ' + l.name">
                   <mat-icon>add</mat-icon>
                 </button>
               </td>
               <td>{{ l.price * l.quantity | currency }}</td>
               <td>
-                <button mat-icon-button (click)="cart.remove(l.productId)" [attr.aria-label]="'Remove ' + l.name">
+                <button mat-icon-button (click)="remove(l.productId)" [attr.aria-label]="'Remove ' + l.name">
                   <mat-icon>delete</mat-icon>
                 </button>
               </td>
@@ -43,7 +45,7 @@ import { CartService } from '../../core/cart.service';
         </tbody>
       </table>
       <div class="summary">
-        <span class="total" data-testid="cart-total">Total: {{ cart.total() | currency }}</span>
+        <span class="total" data-testid="cart-total">Total: {{ total() | currency }}</span>
         <a mat-flat-button routerLink="/checkout">Checkout</a>
       </div>
     }
@@ -58,5 +60,18 @@ import { CartService } from '../../core/cart.service';
   `,
 })
 export class Cart {
-  protected readonly cart = inject(CartService);
+  private readonly store = inject(Store);
+
+  // Read: selectors as signals. Write: dispatch actions; the reducer computes the new state.
+  protected readonly lines = this.store.selectSignal(selectCartLines);
+  protected readonly total = this.store.selectSignal(selectCartTotal);
+  protected readonly isEmpty = this.store.selectSignal(selectCartIsEmpty);
+
+  protected setQuantity(productId: number, quantity: number): void {
+    this.store.dispatch(CartActions.setQuantity({ productId, quantity }));
+  }
+
+  protected remove(productId: number): void {
+    this.store.dispatch(CartActions.removeLine({ productId }));
+  }
 }

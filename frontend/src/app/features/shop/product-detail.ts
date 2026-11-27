@@ -7,7 +7,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { RouterLink } from '@angular/router';
-import { CartService } from '../../core/cart.service';
+import { Store } from '@ngrx/store';
+import { CartActions } from '../../core/cart/cart.actions';
 import { Product } from '../../core/models';
 
 @Component({
@@ -53,7 +54,7 @@ import { Product } from '../../core/models';
   `,
 })
 export class ProductDetail {
-  private readonly cart = inject(CartService);
+  private readonly store = inject(Store);
   private readonly snackBar = inject(MatSnackBar);
 
   /** Route parameter ":id" (bound via withComponentInputBinding). */
@@ -63,7 +64,7 @@ export class ProductDetail {
   protected readonly product = httpResource<Product>(() => `/api/products/${this.id()}`);
 
   protected add(p: Product): void {
-    this.cart.add(p, this.quantity());
+    this.store.dispatch(CartActions.addProduct({ product: p, quantity: this.quantity() }));
     this.snackBar.open(`${p.name} added to cart`, 'OK', { duration: 2000 });
   }
 }

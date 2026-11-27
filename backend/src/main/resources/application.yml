@@ -3,8 +3,8 @@ spring:
     name: eshop
   datasource:
     # Override per machine in application-local.yml (profile "local") or with env vars.
-    url: ${ESHOP_DB_URL:jdbc:sqlserver://localhost:1433;databaseName=eshop;encrypt=true;trustServerCertificate=true}
-    username: ${ESHOP_DB_USER:eshop}
+    url: ${ESHOP_DB_URL:jdbc:sqlserver://localhost:1433;databaseName=eshop;encrypt=true;trustServerCertificate=true;integratedSecurity=true}
+    username: ${ESHOP_DB_USER:}
     password: ${ESHOP_DB_PASSWORD:}
   jpa:
     open-in-view: false

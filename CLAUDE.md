@@ -109,6 +109,7 @@ SQL Server specifics:
 Locally, the backend uses **Windows integrated auth**:
 - The server is in Windows-auth-only mode.
 - The JDBC native DLL is in `.tools/mssql-jdbc-auth`. Its version must match the `mssql-jdbc` version from the Spring Boot BOM; re-download it after a Boot upgrade.
+- `mvn spring-boot:run` finds the DLL through `-Djava.library.path` in the spring-boot-maven-plugin `jvmArguments` (pom.xml). An IDE launch needs the same VM argument; otherwise it fails with `Unable to load authentication DLL`.
 
 Integration tests use Testcontainers (`TestcontainersConfiguration`, `mcr.microsoft.com/mssql/server:2022-latest`). They never touch the local DB.
 
@@ -125,7 +126,7 @@ Patterns used throughout:
 - Forms use **Signal Forms**: `form(model, schema, { submission: { action } })` with `<form [formRoot]>` and `[formField]`.
 - Text inputs must bind to `string` fields, not `string | null`.
 - Route params and query params arrive as `input()`s via `withComponentInputBinding()`.
-- The cart is client-side only (`CartService` with localStorage). The server re-validates stock when the order is placed.
+- The cart is client-side only and lives in the **NgRx Store** (`core/cart/`: actions, `cartFeature` reducer, selectors, `CartEffects`). Components read with `store.selectSignal(selectX)` and write with `store.dispatch(CartActions.x(...))`. The reducer stays pure: `CartEffects` restores from localStorage on `ROOT_EFFECTS_INIT` and saves after every change. The server re-validates stock when the order is placed. The store is registered in `app.config.ts` (`provideStore`, `provideState`, `provideEffects`, `provideStoreDevtools`). Other state (auth, page data) still uses signals and `httpResource`; move it to NgRx only on purpose.
 
 Testing notes:
 - In unit tests, don't `await fixture.whenStable()` while an `httpResource` request is still unflushed; it waits forever. Use `TestBed.tick()`, flush, then `whenStable()`.

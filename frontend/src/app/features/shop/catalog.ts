@@ -10,7 +10,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { RouterLink } from '@angular/router';
-import { CartService } from '../../core/cart.service';
+import { Store } from '@ngrx/store';
+import { CartActions } from '../../core/cart/cart.actions';
 import { Page, Product } from '../../core/models';
 
 const PAGE_SIZE = 12;
@@ -90,7 +91,7 @@ const PAGE_SIZE = 12;
   `,
 })
 export class Catalog {
-  private readonly cart = inject(CartService);
+  private readonly store = inject(Store);
   private readonly snackBar = inject(MatSnackBar);
 
   protected readonly pageSize = PAGE_SIZE;
@@ -120,7 +121,7 @@ export class Catalog {
   }
 
   protected addToCart(p: Product): void {
-    this.cart.add(p);
+    this.store.dispatch(CartActions.addProduct({ product: p, quantity: 1 }));
     this.snackBar.open(`${p.name} added to cart`, 'OK', { duration: 2000 });
   }
 }

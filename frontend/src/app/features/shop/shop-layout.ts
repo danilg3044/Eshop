@@ -6,7 +6,8 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
-import { CartService } from '../../core/cart.service';
+import { Store } from '@ngrx/store';
+import { selectCartCount } from '../../core/cart/cart.selectors';
 
 /** Customer-facing frame: top bar with cart and account menu, then the routed page. */
 @Component({
@@ -16,8 +17,8 @@ import { CartService } from '../../core/cart.service';
     <mat-toolbar class="bar">
       <a routerLink="/" class="brand">EShop</a>
       <span class="spacer"></span>
-      <a mat-icon-button routerLink="/cart" aria-label="Shopping cart, {{ cart.count() }} items">
-        <mat-icon [matBadge]="cart.count() || null" matBadgeColor="accent" aria-hidden="false">shopping_cart</mat-icon>
+      <a mat-icon-button routerLink="/cart" aria-label="Shopping cart, {{ cartCount() }} items">
+        <mat-icon [matBadge]="cartCount() || null" matBadgeColor="accent" aria-hidden="false">shopping_cart</mat-icon>
       </a>
       @if (auth.isLoggedIn()) {
         <button mat-button [matMenuTriggerFor]="account" data-testid="account-menu">
@@ -58,7 +59,7 @@ import { CartService } from '../../core/cart.service';
 })
 export class ShopLayout {
   protected readonly auth = inject(AuthService);
-  protected readonly cart = inject(CartService);
+  protected readonly cartCount = inject(Store).selectSignal(selectCartCount);
   private readonly router = inject(Router);
 
   protected logout(): void {
