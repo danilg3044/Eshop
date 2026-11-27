@@ -83,6 +83,50 @@ Flyway creates the tables and about 20 sample products when the backend starts.
 
 The login buttons only appear for providers that are configured (`GET /api/auth/providers`).
 
+## Spring Cloud sample (`cloud/`)
+
+`cloud/` is a separate Maven multi-module workspace (Spring Cloud 2026.0.0) that demonstrates service discovery and an API gateway. The shop backend also registers in Eureka, as `eshop`, so the whole shop can run through the gateway.
+
+| Module | Port | What |
+|---|---|---|
+| `discovery-server` | 8761 | Eureka registry. Its dashboard at http://localhost:8761 lists the registered instances. |
+| `gateway` | 8090 | Spring Cloud Gateway (Server WebMVC), the single entry point. It routes `/api/arithmetic/**` → `lb://arithmetic-service`, `/api/strings/**` → `lb://string-service`, and everything else of the shop (`/api/**`, `/oauth2/**`, `/login/oauth2/**`, Swagger) → `lb://eshop`. |
+| `arithmetic-service` | 8081 | `GET /api/arithmetic/{add,subtract,multiply,divide}?a=&b=` and `/power?base=&exponent=` |
+| `string-service` | 8082 | `GET /api/strings/{reverse,uppercase,lowercase,capitalize,length,word-count,palindrome}?text=` |
+
+The services register in Eureka under their `spring.application.name`. The gateway looks them up by that name and load-balances round-robin across all instances. Every response has a `servedBy` field, so you can watch the balancing happen.
+
+```powershell
+.\cloud\start-all.ps1            # each service in its own window (Eureka first)
+.\cloud\start-all.ps1 -Second    # plus a 2nd arithmetic-service on :8083
+```
+
+To start the services by hand, run each one in its own dev-env shell, starting with `discovery-server`:
+```powershell
+cd cloud\<module>; mvn spring-boot:run
+```
+For an extra instance, run `$env:PORT=8083; mvn spring-boot:run`.
+
+Try:
+- http://localhost:8090/api/arithmetic/divide?a=1&b=3 (call it repeatedly while two instances are up)
+- http://localhost:8090/api/strings/palindrome?text=Never%20odd%20or%20even
+
+In STS: **File → Import → Maven → Existing Maven Projects**, select `cloud/`, and run each `*Application` as a Spring Boot App.
+
+### The shop through the gateway
+
+1. Start `discovery-server` and `gateway`.
+2. Start the backend as usual. It registers in Eureka as `eshop:8080`.
+3. Start the frontend in gateway mode:
+   ```powershell
+   cd frontend; npm run start:gateway
+   ```
+   This sends `/api` to `:8090` instead of `:8080`. It also sets the Google/Facebook redirect origin to `:8090`, by swapping `config.ts` for `config.gateway.ts` (the `gateway` configuration in `angular.json`).
+
+`npm start` keeps talking to the backend directly, and the backend works without Eureka: it only logs connection warnings. To switch registration off entirely, set `EUREKA_ENABLED=false`.
+
+**Google/Facebook login through the gateway** also needs `http://localhost:8090/login/oauth2/code/google` (and `/facebook`) added as an authorized redirect URI at each provider. The gateway keeps the `Host` header (`PreserveHostHeader`), so the backend builds its redirect URIs with `:8090`.
+
 ## Tests
 
 | Command (inside a dev-env shell) | What runs |
@@ -91,4 +135,5 @@ The login buttons only appear for providers that are configured (`GET /api/auth/
 | `cd backend; mvn verify` | Everything above, plus `*IT` integration tests against SQL Server 2022 in Docker (**Docker Desktop must be running**) |
 | `cd frontend; npm test` | Angular unit tests (Vitest), in watch mode |
 | `cd frontend; npm run test:ci` | Angular unit tests, single run |
+| `cd cloud; mvn verify` | Spring Cloud sample: unit, controller and Eureka-server tests, plus gateway routing and load-balancing tests against stub services (no Eureka or Docker needed) |
 | `cd frontend; npm run e2e` | Playwright end-to-end tests. **The backend must be running** with the admin seeded. Override the admin with `E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD`. |

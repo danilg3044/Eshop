@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          routes:
+            # /api/arithmetic/** -> any registered instance of arithmetic-service (path passed through unchanged)
+            - id: arithmetic
+              uri: lb://arithmetic-service
+              predicates:
+                - Path=/api/arithmetic/**
+              filters:
+                - AddResponseHeader=X-Gateway-Route, arithmetic
+            # /api/strings/** -> any registered instance of string-service
+            - id: strings
+              uri: lb://string-service
+              predicates:
+                - Path=/api/strings/**
+              filters:
+                - AddResponseHeader=X-Gateway-Route, strings
+            # The shop backend (backend/, registered as "eshop"): the rest of /api plus the Google/Facebook
+            # login endpoints and Swagger. It must stay LAST: routes are tried in order, and /api/** would
+            # otherwise also match /api/arithmetic/** and /api/strings/**.
+            - id: eshop
+              uri: lb://eshop
+              predicates:
+                - Path=/api/**,/oauth2/**,/login/oauth2/**,/swagger-ui.html,/swagger-ui/**,/v3/api-docs/**
+              filters:
+                # Keep "Host: localhost:8090" so the backend builds OAuth2 redirect URIs (and other absolute
+                # URLs) with the gateway's address, not the backend's own :8080.
+                - PreserveHostHeader
+                - AddResponseHeader=X-Gateway-Route, eshop
+
+server:
+  port: ${PORT:8090}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+    registry-fetch-interval-seconds: 5   # notice new/stopped instances quickly (dev setting)
+  instance:
+    hostname: localhost
+    instance-id: ${spring.application.name}:${server.port}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

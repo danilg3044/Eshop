@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: string-service          # the name it is registered under in Eureka; the gateway routes to lb://string-service
+  mvc:
+    problemdetails:
+      enabled: true               # missing/invalid parameters -> RFC 9457 JSON errors
+
+server:
+  # Start more instances on other ports to see load balancing, e.g.  PORT=8084
+  port: ${PORT:8082}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+  instance:
+    hostname: localhost
+    instance-id: ${spring.application.name}:${server.port}   # unique per instance, shown in the Eureka dashboard
+    lease-renewal-interval-in-seconds: 5                      # dev settings: heartbeat often,
+    lease-expiration-duration-in-seconds: 15                  # and get dropped soon after stopping
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

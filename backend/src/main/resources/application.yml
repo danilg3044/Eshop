@@ -17,7 +17,21 @@ spring:
   # Without them the app still starts; social login is simply unavailable.
 
 server:
-  port: 8080
+  port: ${PORT:8080}
+
+# Service discovery (cloud/discovery-server). Registered as "eshop" (spring.application.name), which the
+# gateway (:8090) routes to as lb://eshop. Without Eureka running the shop still works on :8080 directly; the
+# client just logs connection warnings. Set EUREKA_ENABLED=false to switch registration off.
+eureka:
+  client:
+    enabled: ${EUREKA_ENABLED:true}
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+  instance:
+    hostname: localhost
+    instance-id: ${spring.application.name}:${server.port}
+    lease-renewal-interval-in-seconds: 5        # dev settings: heartbeat often,
+    lease-expiration-duration-in-seconds: 15    # and get dropped soon after stopping
 
 eshop:
   frontend-url: ${ESHOP_FRONTEND_URL:http://localhost:4200}

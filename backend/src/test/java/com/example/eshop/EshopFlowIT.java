@@ -24,7 +24,8 @@ import org.springframework.test.web.servlet.ResultActions;
  */
 @SpringBootTest(properties = {
         "eshop.admin.email=admin@test.local",
-        "eshop.admin.password=Admin123!"
+        "eshop.admin.password=Admin123!",
+        "eureka.client.enabled=false"
 })
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)

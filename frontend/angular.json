@@ -54,6 +54,14 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "gateway": {
+              "fileReplacements": [
+                {
+                  "replace": "src/app/core/config.ts",
+                  "with": "src/app/core/config.gateway.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -66,6 +74,10 @@
             },
             "development": {
               "buildTarget": "frontend:build:development"
+            },
+            "gateway": {
+              "buildTarget": "frontend:build:development,gateway",
+              "proxyConfig": "proxy.gateway.conf.json"
             }
           },
           "defaultConfiguration": "development",
