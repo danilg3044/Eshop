@@ -1,0 +1,55 @@
+spring:
+  application:
+    name: ai-service
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AUTH_ISSUER:http://localhost:9000}   # cloud/auth-server
+  mvc:
+    problemdetails:
+      enabled: true
+  ai:
+    model:
+      # Which chat model Spring AI activates: anthropic | ollama | none.
+      # "none" (the default) starts without a model; the endpoint then answers 503 with instructions.
+      chat: ${AI_PROVIDER:none}
+      # Only chat is used. The other model types would otherwise start too (Ollama's even connect on startup).
+      embedding: none
+      decision: none
+    chat:
+      client:
+        enabled: false   # DescriptionWriter builds its own ChatClient, so it also works when no model is active
+    anthropic:
+      # A key from https://console.anthropic.com (Claude API, billed per use; a Claude Team/Pro plan is separate)
+      api-key: ${ANTHROPIC_API_KEY:}
+      chat:
+        model: ${ANTHROPIC_MODEL:claude-opus-5-5}
+        max-tokens: 1024     # a description is ~100 words; this only caps runaway answers
+    ollama:
+      # Free local models: docker run -d -p 11434:11434 --name ollama ollama/ollama
+      base-url: ${OLLAMA_URL:http://localhost:11434}
+      chat:
+        model: ${OLLAMA_MODEL:llama3.2}
+      init:
+        pull-model-strategy: when_missing   # downloads the model (~2 GB) on first start
+
+server:
+  port: ${PORT:8084}
+
+eureka:
+  client:
+    enabled: ${EUREKA_ENABLED:true}
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+  instance:
+    hostname: localhost
+    instance-id: ${spring.application.name}:${server.port}
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 15
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

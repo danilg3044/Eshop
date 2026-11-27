@@ -1,0 +1,22 @@
+# Copy to application-local.yml (same folder, gitignored). It is picked up automatically (spring.config.import).
+
+identity:
+  admin:
+    email: admin@eshop.local
+    password: Admin123!
+
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          # Remove a block you have no credentials for; its button disappears from the sign-in page.
+          # Authorized redirect URI to register at the provider: http://localhost:9000/login/oauth2/code/google (or /facebook)
+          google:
+            client-id: YOUR_GOOGLE_CLIENT_ID
+            client-secret: YOUR_GOOGLE_CLIENT_SECRET
+            scope: openid,profile,email
+          facebook:
+            client-id: YOUR_FACEBOOK_APP_ID
+            client-secret: YOUR_FACEBOOK_APP_SECRET
+            scope: email,public_profile

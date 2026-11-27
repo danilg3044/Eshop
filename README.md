@@ -2,8 +2,10 @@
 
 A sample online store for learning AI-assisted development:
 
-- **backend/**: Java 27, Spring Boot 4.2, Spring Security (JWT + Google/Facebook OAuth2), JPA, and Flyway on Microsoft SQL Server.
-- **frontend/**: Angular 22 with standalone components, signals, Signal Forms, `httpResource`, and Angular Material.
+- **backend/**: Java 27, Spring Boot 4.2, JPA and Flyway on Microsoft SQL Server. It is an OAuth2 resource server.
+- **cloud/auth-server**: Spring Authorization Server (OAuth2 / OpenID Connect). It owns the accounts and the sign-in, registration and Google/Facebook pages, and issues the JWTs that every service validates.
+- **cloud/**: Spring Cloud (Eureka, Gateway), two small microservices, and a Spring AI service that writes product descriptions.
+- **frontend/**: Angular 22 with standalone components, signals, Signal Forms, `httpResource`, NgRx (auth and cart) and Angular Material. Sign-in uses Authorization Code + PKCE.
 - **Two UIs in one Angular app:**
   - the customer storefront at `/`
   - the back office at `/admin`, a lazy-loaded area for admins only
@@ -11,7 +13,7 @@ A sample online store for learning AI-assisted development:
 | Customers | Administrators |
 |---|---|
 | Register with email/password, or sign in with Google/Facebook | Sign in with email/password only (accounts are seeded, never self-registered) |
-| Browse and search products, use the cart, check out | Browse the full product repository, including inactive items |
+| Browse and search products, use the cart, check out | Browse the full product repository, including inactive items, and have product descriptions written with AI |
 | See their own orders, edit their profile | See registered users' profiles and order history |
 | | See current orders and order history, and move orders through PENDING → PAID → SHIPPED → DELIVERED (or CANCELLED) |
 
@@ -50,38 +52,88 @@ On a fresh clone, download the tools again with the versions above:
 The backend uses the local SQL Server with **Windows authentication** (`integratedSecurity=true`), so no SQL login is needed.
 
 ```powershell
-sqlcmd -S localhost -E -C -i db\create-database.sql      # creates the empty "eshop" database
+sqlcmd -S localhost -E -C -i db\create-database.sql            # "eshop": shop data (products, orders, profiles)
+sqlcmd -S localhost -E -C -i db\create-identity-database.sql   # "eshop_identity": accounts (auth server)
 copy backend\src\main\resources\application-local.yml.example backend\src\main\resources\application-local.yml
+copy cloud\auth-server\src\main\resources\application-local.yml.example cloud\auth-server\src\main\resources\application-local.yml
 ```
 
-Edit `application-local.yml` (it's gitignored):
-- the admin email and password
-- optionally, Google/Facebook credentials
+Both `application-local.yml` files are gitignored:
+- **The backend's** holds only the database connection.
+- **The auth server's** holds the admin email and password (default `admin@eshop.local` / `Admin123!`) and, optionally, Google/Facebook credentials. The auth server reads it automatically.
 
-Flyway creates the tables and about 20 sample products when the backend starts.
+Flyway creates the tables when each server starts. The backend also creates about 20 sample products.
 
 ## Run
 
 ```powershell
-# terminal 1
+# terminal 1: sign-in (http://localhost:9000)
+. .\dev-env.ps1; cd cloud\auth-server; mvn spring-boot:run
+# terminal 2: the shop API
 . .\dev-env.ps1; cd backend; mvn spring-boot:run "-Dspring-boot.run.profiles=local"
-# terminal 2
+# terminal 3: the Angular app
 . .\dev-env.ps1; cd frontend; npm start
+# optional, terminal 4: AI product descriptions (see "AI product descriptions")
+. .\dev-env.ps1; cd cloud\ai-service; mvn spring-boot:run
 ```
 
+Then open:
 - Shop: http://localhost:4200
-- Back office: http://localhost:4200/admin (sign in as the admin from `application-local.yml`; the default is `admin@eshop.local` / `Admin123!`)
+- Back office: http://localhost:4200/admin (sign in as the admin from the auth server's `application-local.yml`)
 - API docs: http://localhost:8080/swagger-ui.html
 
-## Google / Facebook login
+When nothing else is running, set `EUREKA_ENABLED=false` to avoid the Eureka connection warnings.
+
+## Sign-in: OAuth2 / OpenID Connect
+
+`cloud/auth-server` is a Spring Authorization Server on http://localhost:9000.
+- **The Angular app** is a public client (`eshop-web`) using **Authorization Code + PKCE**:
+  1. "Sign in" sends the browser to the auth server's sign-in page, which also offers registration and Google/Facebook.
+  2. The auth server sends the browser back to `/auth/callback?code=…&state=…`.
+  3. The app trades the code plus its PKCE verifier for an access token and an ID token.
+  4. "Sign out" also ends the auth server's session (OpenID Connect logout).
+- **Every API** validates the same tokens: the shop backend, arithmetic-service, string-service and ai-service. They only need the issuer URL (`AUTH_ISSUER`, default `http://localhost:9000`) and fetch the signing keys from it. No shared secret exists anywhere.
+- **Tokens** carry `sub` (the account id), `email`, `role` (USER/ADMIN), `provider`, `given_name` and `family_name`. The first time the shop sees a user, it creates their shop record (profile, orders) from these claims.
+- **The signing key** is generated at startup. Restarting the auth server therefore ends every session, and users simply sign in again.
+
+### Google / Facebook
 
 1. Create OAuth credentials:
    - **Google:** Google Cloud Console → APIs & Services → Credentials → OAuth client ID (type "Web application").
    - **Facebook:** developers.facebook.com → create an app → add Facebook Login.
-2. Set the authorized redirect URI to `http://localhost:8080/login/oauth2/code/google` (or `.../facebook`).
-3. Put the client ID and secret in `application-local.yml` under `spring.security.oauth2.client.registration` (see the `.example` file).
+2. Set the authorized redirect URI to `http://localhost:9000/login/oauth2/code/google` (or `.../facebook`). This is the auth server, not the shop.
+3. Put the client ID and secret in `cloud/auth-server/src/main/resources/application-local.yml` (see the `.example` file).
 
-The login buttons only appear for providers that are configured (`GET /api/auth/providers`).
+The buttons only appear on the sign-in page for providers that are configured.
+
+### Calling the APIs from a terminal
+
+The `dev-cli` client gets a machine token, which has no user:
+```powershell
+$t = (Invoke-RestMethod -Method Post http://localhost:9000/oauth2/token -Body @{grant_type='client_credentials'; scope='api'} `
+      -Headers @{Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes('dev-cli:dev-secret'))}).access_token
+Invoke-RestMethod http://localhost:8090/api/strings/reverse?text=hello -Headers @{Authorization = "Bearer $t"}
+```
+- Machine tokens work for arithmetic-service and string-service.
+- User APIs (orders, profile) and the admin API need a signed-in user's token.
+
+## AI product descriptions (Spring AI)
+
+`cloud/ai-service` (:8084, admins only) writes a product description from the name, category and a few keywords. It returns typed data (`description` and `highlights`) using Spring AI's structured output.
+
+In the back office, under **Products**, a ✨ button opens a dialog: **Write with AI**, edit the text, then **Apply**. Applying saves it with `PUT /api/admin/products/{id}/description`.
+
+Choose the model with `AI_PROVIDER` when you start the AI service:
+
+| `AI_PROVIDER` | What you need |
+|---|---|
+| `none` (default) | Nothing. The service starts, and the dialog explains how to enable a model. |
+| `anthropic` | `ANTHROPIC_API_KEY` from https://console.anthropic.com. This is billed per use and separate from a Claude Team/Pro subscription. The model is `claude-opus-5-5`; change it with `ANTHROPIC_MODEL`. |
+| `ollama` | A free local model: `docker run -d -p 11434:11434 --name ollama ollama/ollama`. The model (`llama3.2`, ~2 GB, set with `OLLAMA_MODEL`) is downloaded on first start. |
+
+```powershell
+$env:AI_PROVIDER = 'anthropic'; $env:ANTHROPIC_API_KEY = 'sk-ant-...'; cd cloud\ai-service; mvn spring-boot:run
+```
 
 ## Spring Cloud sample (`cloud/`)
 
@@ -90,7 +142,9 @@ The login buttons only appear for providers that are configured (`GET /api/auth/
 | Module | Port | What |
 |---|---|---|
 | `discovery-server` | 8761 | Eureka registry. Its dashboard at http://localhost:8761 lists the registered instances. |
-| `gateway` | 8090 | Spring Cloud Gateway (Server WebMVC), the single entry point. It routes `/api/arithmetic/**` → `lb://arithmetic-service`, `/api/strings/**` → `lb://string-service`, and everything else of the shop (`/api/**`, `/oauth2/**`, `/login/oauth2/**`, Swagger) → `lb://eshop`. |
+| `gateway` | 8090 | Spring Cloud Gateway (Server WebMVC), the single entry point for APIs. It routes `/api/arithmetic/**` → `lb://arithmetic-service`, `/api/strings/**` → `lb://string-service`, `/api/ai/**` → `lb://ai-service`, and the rest of the shop (`/api/**`, Swagger) → `lb://eshop`. It passes the `Authorization` header through; each service checks the token itself. |
+| `auth-server` | 9000 | OAuth2 / OpenID Connect authorization server (see "Sign-in"). Not behind the gateway: the issuer has one fixed URL. |
+| `ai-service` | 8084 | Spring AI product descriptions (see "AI product descriptions"). |
 | `arithmetic-service` | 8081 | `GET /api/arithmetic/{add,subtract,multiply,divide}?a=&b=` and `/power?base=&exponent=` |
 | `string-service` | 8082 | `GET /api/strings/{reverse,uppercase,lowercase,capitalize,length,word-count,palindrome}?text=` |
 
@@ -107,9 +161,9 @@ cd cloud\<module>; mvn spring-boot:run
 ```
 For an extra instance, run `$env:PORT=8083; mvn spring-boot:run`.
 
-Try:
-- http://localhost:8090/api/arithmetic/divide?a=1&b=3 (call it repeatedly while two instances are up)
-- http://localhost:8090/api/strings/palindrome?text=Never%20odd%20or%20even
+Try these with a token (see "Calling the APIs from a terminal"):
+- `/api/arithmetic/divide?a=1&b=3`: call it repeatedly while two instances are up.
+- `/api/strings/palindrome?text=Never%20odd%20or%20even`
 
 In STS: **File → Import → Maven → Existing Maven Projects**, select `cloud/`, and run each `*Application` as a Spring Boot App.
 
@@ -121,11 +175,9 @@ In STS: **File → Import → Maven → Existing Maven Projects**, select `cloud
    ```powershell
    cd frontend; npm run start:gateway
    ```
-   This sends `/api` to `:8090` instead of `:8080`. It also sets the Google/Facebook redirect origin to `:8090`, by swapping `config.ts` for `config.gateway.ts` (the `gateway` configuration in `angular.json`).
+   This sends all of `/api` to `:8090`, including `/api/ai`. Sign-in still goes directly to the auth server on `:9000`.
 
-`npm start` keeps talking to the backend directly, and the backend works without Eureka: it only logs connection warnings. To switch registration off entirely, set `EUREKA_ENABLED=false`.
-
-**Google/Facebook login through the gateway** also needs `http://localhost:8090/login/oauth2/code/google` (and `/facebook`) added as an authorized redirect URI at each provider. The gateway keeps the `Host` header (`PreserveHostHeader`), so the backend builds its redirect URIs with `:8090`.
+`npm start` talks to the backend (`:8080`) and the AI service (`:8084`) directly. The backend works without Eureka; it only logs connection warnings. To switch registration off entirely, set `EUREKA_ENABLED=false`.
 
 ## Tests
 
@@ -135,5 +187,5 @@ In STS: **File → Import → Maven → Existing Maven Projects**, select `cloud
 | `cd backend; mvn verify` | Everything above, plus `*IT` integration tests against SQL Server 2022 in Docker (**Docker Desktop must be running**) |
 | `cd frontend; npm test` | Angular unit tests (Vitest), in watch mode |
 | `cd frontend; npm run test:ci` | Angular unit tests, single run |
-| `cd cloud; mvn verify` | Spring Cloud sample: unit, controller and Eureka-server tests, plus gateway routing and load-balancing tests against stub services (no Eureka or Docker needed) |
-| `cd frontend; npm run e2e` | Playwright end-to-end tests. **The backend must be running** with the admin seeded. Override the admin with `E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD`. |
+| `cd cloud; mvn verify` | All `cloud/` modules, covering:<ul><li>unit and controller tests</li><li>gateway routing and load balancing against stub services</li><li>the AI service against a fake chat model (no API key)</li><li>the auth server's real OAuth2 flows (PKCE sign-in, registration, client credentials) against SQL Server in Docker (**Docker Desktop must be running**)</li></ul> |
+| `cd frontend; npm run e2e` | Playwright end-to-end tests through the real sign-in pages. **The auth server and the backend must be running**, with the admin seeded. Override the admin with `E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD`. |

@@ -5,7 +5,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.example.eshop.auth.OAuth2LoginSuccessHandler;
 import com.example.eshop.common.NotFoundException;
 import com.example.eshop.common.PageResponse;
 import com.example.eshop.config.SecurityConfig;
@@ -25,7 +24,6 @@ class ProductControllerTest {
     @Autowired MockMvc mvc;
 
     @MockitoBean ProductService service;
-    @MockitoBean OAuth2LoginSuccessHandler oauth2Handler;
 
     @Test
     void catalogIsPublic_andOnlyShowsActiveProducts() throws Exception {

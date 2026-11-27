@@ -1,44 +1,82 @@
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { DOCUMENT } from '@angular/common';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { BACKEND_ORIGIN } from '../config';
-import { TokenResponse, User } from '../models';
-import { Registration } from './auth.models';
+import { AUTH_SERVER, CLIENT_ID, SCOPES } from '../config';
+import { User } from '../models';
+import { OAuthTokens } from './auth.models';
+import { Pkce, createPkce } from './pkce';
 
-/** The /api/auth HTTP calls. Stateless: the session itself lives in the NgRx store. */
+/**
+ * Talks to cloud/auth-server (standard OAuth2 / OpenID Connect endpoints) and to the shop's /api/auth/me.
+ * Stateless: the session itself lives in the NgRx store. Browser navigation goes through here too,
+ * so the effects can be tested without leaving the page.
+ */
 @Service()
 export class AuthApi {
   private readonly http = inject(HttpClient);
+  private readonly document = inject(DOCUMENT);
 
-  login(email: string, password: string): Observable<TokenResponse> {
-    return this.http.post<TokenResponse>('/api/auth/login', { email, password });
+  createPkce(): Promise<Pkce> {
+    return createPkce();
   }
 
-  register(registration: Registration): Observable<TokenResponse> {
-    return this.http.post<TokenResponse>('/api/auth/register', registration);
+  /** Where the auth server sends the browser back to; registered for the eshop-web client. */
+  redirectUri(): string {
+    return `${this.document.location.origin}/auth/callback`;
   }
 
-  /** Trades the one-time code from a Google/Facebook login for a JWT. */
-  exchangeCode(code: string): Observable<TokenResponse> {
-    return this.http.post<TokenResponse>('/api/auth/exchange', { code });
+  /** The auth server's sign-in page, as an Authorization Code + PKCE request. */
+  authorizeUrl(pkce: Pkce): string {
+    const params = new HttpParams({
+      fromObject: {
+        response_type: 'code',
+        client_id: CLIENT_ID,
+        redirect_uri: this.redirectUri(),
+        scope: SCOPES,
+        state: pkce.state,
+        code_challenge: pkce.challenge,
+        code_challenge_method: 'S256',
+      },
+    });
+    return `${AUTH_SERVER}/oauth2/authorize?${params.toString()}`;
+  }
+
+  /** Code + verifier -> tokens. A public client: no secret, the verifier proves it started the request. */
+  exchangeCode(code: string, verifier: string): Observable<OAuthTokens> {
+    const body = new HttpParams({
+      fromObject: {
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: this.redirectUri(),
+        client_id: CLIENT_ID,
+        code_verifier: verifier,
+      },
+    });
+    return this.http.post<OAuthTokens>(`${AUTH_SERVER}/oauth2/token`, body.toString(), {
+      headers: new HttpHeaders({ 'Content-Type': 'application/x-www-form-urlencoded' }),
+    });
   }
 
   /**
-   * The signed-in user. Pass a token to use one that isn't in the store yet (right after sign-in);
-   * otherwise the interceptor adds the stored one.
+   * The shop's record of the signed-in user (created on the first call). Pass a token that isn't in the store
+   * yet (right after sign-in); otherwise the interceptor adds the stored one.
    */
   me(token?: string): Observable<User> {
     const headers = token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : undefined;
     return this.http.get<User>('/api/auth/me', { headers });
   }
 
-  /** Configured social logins, e.g. ['google', 'facebook']. */
-  providers(): Observable<string[]> {
-    return this.http.get<string[]>('/api/auth/providers');
+  /** OpenID Connect RP-initiated logout: ends the auth server's session too, then comes back to the shop. */
+  logoutUrl(idToken: string): string {
+    const params = new HttpParams({
+      fromObject: { id_token_hint: idToken, post_logout_redirect_uri: `${this.document.location.origin}/` },
+    });
+    return `${AUTH_SERVER}/connect/logout?${params.toString()}`;
   }
 
-  /** Full-page redirect target that starts the Google/Facebook login on the backend. */
-  socialLoginUrl(registrationId: string): string {
-    return `${BACKEND_ORIGIN}/oauth2/authorization/${registrationId}`;
+  /** Full-page navigation (leaves the Angular app). */
+  redirect(url: string): void {
+    this.document.location.assign(url);
   }
 }

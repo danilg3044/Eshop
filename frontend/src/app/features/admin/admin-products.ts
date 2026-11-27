@@ -1,18 +1,22 @@
 import { CurrencyPipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Page, Product } from '../../core/models';
+import { DescriptionWriter } from './description-writer';
 
-/** The full product repository, including inactive and out-of-stock items. Read-only. */
+/** The full product repository, including inactive and out-of-stock items. Descriptions can be (re)written with AI. */
 @Component({
   selector: 'app-admin-products',
-  imports: [CurrencyPipe, MatTableModule, MatPaginatorModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule],
+  imports: [CurrencyPipe, MatTableModule, MatPaginatorModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, MatTooltipModule],
   template: `
     <h1>Products</h1>
     <mat-form-field class="search" subscriptSizing="dynamic">
@@ -48,6 +52,15 @@ import { Page, Product } from '../../core/models';
           <th mat-header-cell *matHeaderCellDef>Status</th>
           <td mat-cell *matCellDef="let p">{{ p.active ? 'Active' : 'Inactive' }}</td>
         </ng-container>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef><span class="visually-hidden">Actions</span></th>
+          <td mat-cell *matCellDef="let p">
+            <button mat-icon-button type="button" (click)="writeDescription(p)" matTooltip="Write description"
+                    [attr.aria-label]="'Write description for ' + p.name">
+              <mat-icon>auto_awesome</mat-icon>
+            </button>
+          </td>
+        </ng-container>
         <tr mat-header-row *matHeaderRowDef="columns"></tr>
         <tr mat-row *matRowDef="let row; columns: columns" [class.inactive]="!row.active"></tr>
       </table>
@@ -64,7 +77,10 @@ import { Page, Product } from '../../core/models';
   `,
 })
 export class AdminProducts {
-  protected readonly columns: (keyof Product)[] = ['sku', 'name', 'category', 'price', 'stock', 'active'];
+  private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
+
+  protected readonly columns = ['sku', 'name', 'category', 'price', 'stock', 'active', 'actions'];
   private readonly query = signal('');
   private readonly paging = signal({ page: 0, size: 20 });
 
@@ -80,5 +96,17 @@ export class AdminProducts {
 
   protected onPage(e: PageEvent): void {
     this.paging.set({ page: e.pageIndex, size: e.pageSize });
+  }
+
+  protected writeDescription(product: Product): void {
+    this.dialog
+      .open<DescriptionWriter, Product, Product>(DescriptionWriter, { data: product, width: '640px', maxWidth: '95vw' })
+      .afterClosed()
+      .subscribe((saved) => {
+        if (saved) {
+          this.snackBar.open(`Description of ${saved.name} saved`, 'OK', { duration: 3000 });
+          this.products.reload();
+        }
+      });
   }
 }

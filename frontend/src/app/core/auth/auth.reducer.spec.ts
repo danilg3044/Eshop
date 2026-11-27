@@ -7,43 +7,45 @@ import { authFeature, initialAuthState } from './auth.reducer';
 import { selectEmail, selectIsAdmin, selectIsLoggedIn, selectProfile, selectRole } from './auth.selectors';
 
 const reduce = (...actions: Action[]): AuthState => actions.reduce(authFeature.reducer, initialAuthState);
-const login = AuthActions.login({ email: 'dana@example.com', password: 'x', returnUrl: null });
+const succeeded = (token = fakeJwt()) =>
+  AuthActions.signInSucceeded({ token, idToken: 'id-token', user: fakeUser(), returnUrl: null });
 
 describe('auth reducer', () => {
   it('marks a sign-in as pending and clears the previous error', () => {
-    const state = reduce(AuthActions.signInFailed({ error: 'nope' }), login);
+    const state = reduce(AuthActions.signInFailed({ error: 'nope' }), AuthActions.exchangeCode({ code: 'c', state: 's' }));
 
     expect(state.pending).toBe(true);
     expect(state.error).toBeNull();
   });
 
-  it('stores token and user on success', () => {
+  it('stores both tokens and the user on success', () => {
     const token = fakeJwt();
-    const state = reduce(login, AuthActions.signInSucceeded({ token, user: fakeUser(), returnUrl: null }));
+    const state = reduce(AuthActions.login({ returnUrl: null }), succeeded(token));
 
-    expect(state).toEqual({ token, user: fakeUser(), pending: false, error: null });
+    expect(state).toEqual({ token, idToken: 'id-token', user: fakeUser(), pending: false, error: null });
   });
 
-  it('keeps the error of a failed sign-in until cleared', () => {
-    const failed = reduce(login, AuthActions.signInFailed({ error: 'Invalid email or password' }));
+  it('keeps the error of a failed sign-in', () => {
+    const failed = reduce(AuthActions.exchangeCode({ code: 'c', state: 's' }), AuthActions.signInFailed({ error: 'Expired' }));
+
     expect(failed.pending).toBe(false);
-    expect(failed.error).toBe('Invalid email or password');
-
-    expect(authFeature.reducer(failed, AuthActions.clearError()).error).toBeNull();
+    expect(failed.error).toBe('Expired');
   });
 
-  it('restores a token and later its user', () => {
+  it('restores tokens and later the user', () => {
     const token = fakeJwt();
-    const state = reduce(AuthActions.restored({ token }), AuthActions.userLoaded({ user: fakeUser() }));
+    const state = reduce(AuthActions.restored({ token, idToken: 'id' }), AuthActions.userLoaded({ user: fakeUser() }));
 
     expect(state.token).toBe(token);
+    expect(state.idToken).toBe('id');
     expect(state.user?.email).toBe('dana@example.com');
   });
 
-  it('forgets everything on logout and on session expiry', () => {
-    const signedIn = reduce(AuthActions.signInSucceeded({ token: fakeJwt(), user: fakeUser(), returnUrl: null }));
+  it('keeps the tokens on logout until the effect has used the ID token, then forgets everything', () => {
+    const signedIn = reduce(succeeded());
 
-    expect(authFeature.reducer(signedIn, AuthActions.logout())).toEqual(initialAuthState);
+    expect(authFeature.reducer(signedIn, AuthActions.logout())).toBe(signedIn);
+    expect(authFeature.reducer(signedIn, AuthActions.loggedOut())).toEqual(initialAuthState);
     expect(authFeature.reducer(signedIn, AuthActions.sessionExpired())).toEqual(initialAuthState);
   });
 });
@@ -51,7 +53,7 @@ describe('auth reducer', () => {
 describe('auth selectors', () => {
   const state = (token: string | null, user = fakeUser()) => ({ auth: { ...initialAuthState, token, user } });
 
-  it('derives login state and role from the token', () => {
+  it('derives login state and role from the access token', () => {
     expect(selectIsLoggedIn(state(null))).toBe(false);
     expect(selectIsLoggedIn(state(fakeJwt()))).toBe(true);
     expect(selectIsLoggedIn(state('not-a-jwt'))).toBe(false);

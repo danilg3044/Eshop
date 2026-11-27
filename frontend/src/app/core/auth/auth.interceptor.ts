@@ -6,8 +6,9 @@ import { AuthActions } from './auth.actions';
 import { selectToken } from './auth.selectors';
 
 /**
- * Adds "Authorization: Bearer <jwt>" to API calls (unless the request already carries one), and reports
- * a 401 as AuthActions.sessionExpired; AuthEffects then clears the session and goes to the login page.
+ * Adds "Authorization: Bearer <access token>" to the shop's API calls (/api/..., never to other hosts such as
+ * the auth server), unless the request already carries one. A 401 on such a call means the session is over:
+ * it is reported as AuthActions.sessionExpired, and AuthEffects takes the user through sign-in again.
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const store = inject(Store);
@@ -19,8 +20,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(request).pipe(
     catchError((err: unknown) => {
-      const isSignInCall = /^\/api\/auth\/(login|register|exchange)\b/.test(req.url); // wrong password != expired session
-      if (err instanceof HttpErrorResponse && err.status === 401 && addToken && !isSignInCall) {
+      if (err instanceof HttpErrorResponse && err.status === 401 && addToken) {
         store.dispatch(AuthActions.sessionExpired());
       }
       return throwError(() => err);

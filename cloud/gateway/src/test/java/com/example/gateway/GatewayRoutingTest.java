@@ -32,6 +32,7 @@ class GatewayRoutingTest {
 	private static HttpServer arithmeticB;
 	private static HttpServer strings;
 	private static HttpServer eshop;
+	private static HttpServer ai;
 
 	@LocalServerPort
 	int port;
@@ -44,11 +45,13 @@ class GatewayRoutingTest {
 		arithmeticB = stub("arithmetic-B");
 		strings = stub("strings-1");
 		eshop = stub("eshop-1");
+		ai = stub("ai-1");
 		String prefix = "spring.cloud.discovery.client.simple.instances.";
 		registry.add(prefix + "arithmetic-service[0].uri", () -> uri(arithmeticA));
 		registry.add(prefix + "arithmetic-service[1].uri", () -> uri(arithmeticB));
 		registry.add(prefix + "string-service[0].uri", () -> uri(strings));
 		registry.add(prefix + "eshop[0].uri", () -> uri(eshop));
+		registry.add(prefix + "ai-service[0].uri", () -> uri(ai));
 	}
 
 	@AfterAll
@@ -57,6 +60,7 @@ class GatewayRoutingTest {
 		arithmeticB.stop(0);
 		strings.stop(0);
 		eshop.stop(0);
+		ai.stop(0);
 	}
 
 	@Test
@@ -89,6 +93,14 @@ class GatewayRoutingTest {
 	}
 
 	@Test
+	void passesTheBearerTokenThroughToTheServices() throws Exception {
+		HttpResponse<String> response = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/ai/x"))
+				.header("Authorization", "Bearer abc.def.ghi").build(), HttpResponse.BodyHandlers.ofString());
+
+		assertThat(response.body()).contains("\"authorization\":\"Bearer abc.def.ghi\"");
+	}
+
+	@Test
 	void routesTheRestOfTheApiToTheShopBackend() throws Exception {
 		HttpResponse<String> response = get("/api/products?page=0");
 
@@ -98,20 +110,25 @@ class GatewayRoutingTest {
 	}
 
 	@Test
-	void socialLoginAndSwaggerGoToTheShopBackendWithTheGatewayHostKept() throws Exception {
-		for (String path : new String[] { "/oauth2/authorization/google", "/login/oauth2/code/google?code=x",
-				"/swagger-ui.html", "/v3/api-docs" }) {
+	void swaggerGoesToTheShopBackendWithTheGatewayHostKept() throws Exception {
+		for (String path : new String[] { "/swagger-ui.html", "/v3/api-docs" }) {
 			String body = get(path).body();
 			assertThat(body).as(path).contains("eshop-1");
-			// PreserveHostHeader: the backend sees the gateway's address, so OAuth2 redirect URIs point at :8090
+			// PreserveHostHeader: the backend sees the gateway's address, so the URLs it builds point at :8090
 			assertThat(body).as(path).contains("\"host\":\"localhost:" + port + "\"");
 		}
+	}
+
+	@Test
+	void signInIsNotRoutedThroughTheGateway() throws Exception {
+		assertThat(get("/oauth2/authorize").statusCode()).isEqualTo(404);
 	}
 
 	@Test
 	void moreSpecificRoutesWinOverTheShopCatchAll() throws Exception {
 		assertThat(get("/api/arithmetic/add?a=1&b=2").headers().firstValue("X-Gateway-Route")).hasValue("arithmetic");
 		assertThat(get("/api/strings/length?text=x").headers().firstValue("X-Gateway-Route")).hasValue("strings");
+		assertThat(get("/api/ai/product-descriptions").headers().firstValue("X-Gateway-Route")).hasValue("ai");
 	}
 
 	@Test
@@ -129,7 +146,8 @@ class GatewayRoutingTest {
 		HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
 		server.createContext("/", exchange -> {
 			byte[] body = ("{\"server\":\"" + name + "\",\"uri\":\"" + exchange.getRequestURI()
-					+ "\",\"host\":\"" + exchange.getRequestHeaders().getFirst("Host") + "\"}")
+					+ "\",\"host\":\"" + exchange.getRequestHeaders().getFirst("Host")
+					+ "\",\"authorization\":\"" + exchange.getRequestHeaders().getFirst("Authorization") + "\"}")
 					.getBytes(StandardCharsets.UTF_8);
 			exchange.getResponseHeaders().add("Content-Type", "application/json");
 			exchange.sendResponseHeaders(200, body.length);

@@ -36,6 +36,14 @@ public class ProductService {
                 .orElseThrow(() -> new NotFoundException("Product %d not found".formatted(id)));
     }
 
+    @Transactional
+    public ProductDto changeDescription(Long id, String description) {
+        Product product = products.findById(id)
+                .orElseThrow(() -> new NotFoundException("Product %d not found".formatted(id)));
+        product.setDescription(StringUtils.hasText(description) ? description.trim() : null);
+        return ProductDto.from(product);
+    }
+
     public List<String> categories() {
         return products.findActiveCategories();
     }

@@ -8,10 +8,10 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.example.eshop.auth.OAuth2LoginSuccessHandler;
 import com.example.eshop.common.PageResponse;
 import com.example.eshop.config.SecurityConfig;
 import com.example.eshop.order.OrderService;
@@ -41,7 +41,6 @@ class AdminControllerTest {
     @MockitoBean ProductService products;
     @MockitoBean AdminUserService users;
     @MockitoBean OrderService orders;
-    @MockitoBean OAuth2LoginSuccessHandler oauth2Handler;
 
     static RequestPostProcessor asUser() {
         return jwt().jwt(j -> j.subject("2")).authorities(new SimpleGrantedAuthority("ROLE_USER"));
@@ -98,5 +97,30 @@ class AdminControllerTest {
         mvc.perform(get("/api/admin/products").with(asAdmin())).andExpect(status().isOk());
 
         verify(products).search(null, null, false, 0, 20);
+    }
+
+    @Test
+    void admin_canChangeAProductDescription() throws Exception {
+        mvc.perform(put("/api/admin/products/3/description").with(asAdmin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"description\":\"Hand-glazed mugs for slow mornings.\"}"))
+                .andExpect(status().isOk());
+
+        verify(products).changeDescription(3L, "Hand-glazed mugs for slow mornings.");
+    }
+
+    @Test
+    void descriptionLongerThanTheColumn_gets400() throws Exception {
+        mvc.perform(put("/api/admin/products/3/description").with(asAdmin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"description\":\"" + "x".repeat(2001) + "\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void customerCannotChangeDescriptions() throws Exception {
+        mvc.perform(put("/api/admin/products/3/description").with(asUser())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"description\":\"x\"}"))
+                .andExpect(status().isForbidden());
     }
 }

@@ -5,7 +5,7 @@ import { provideEffects } from '@ngrx/effects';
 import { provideState, provideStore } from '@ngrx/store';
 import { provideStoreDevtools } from '@ngrx/store-devtools';
 import { routes } from './app.routes';
-import { maskSecrets } from './core/auth/auth.devtools';
+import { maskSecrets, maskTokensInState } from './core/auth/auth.devtools';
 import { AuthEffects } from './core/auth/auth.effects';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { authFeature } from './core/auth/auth.reducer';
@@ -23,7 +23,12 @@ export const appConfig: ApplicationConfig = {
     provideState(authFeature),
     provideState(cartFeature),
     provideEffects(AuthEffects, CartEffects),
-    // Redux DevTools browser extension: action log, state diff, time travel. Dev builds only; passwords masked.
-    provideStoreDevtools({ maxAge: 50, logOnly: !isDevMode(), actionSanitizer: maskSecrets }),
+    // Redux DevTools browser extension: action log, state diff, time travel. Dev builds only; tokens masked.
+    provideStoreDevtools({
+      maxAge: 50,
+      logOnly: !isDevMode(),
+      actionSanitizer: maskSecrets,
+      stateSanitizer: maskTokensInState,
+    }),
   ],
 };

@@ -3,7 +3,13 @@ import { Role } from '../models';
 import { decodeJwt } from './auth.models';
 import { authFeature } from './auth.reducer';
 
-export const { selectToken, selectUser, selectPending: selectAuthPending, selectError: selectAuthError } = authFeature;
+export const {
+  selectToken,
+  selectIdToken,
+  selectUser,
+  selectPending: selectAuthPending,
+  selectError: selectAuthError,
+} = authFeature;
 
 /** Decoded once per token (memoized), not on every read. */
 export const selectTokenPayload = createSelector(selectToken, (token) => (token ? decodeJwt(token) : null));

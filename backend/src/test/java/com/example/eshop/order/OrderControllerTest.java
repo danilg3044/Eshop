@@ -10,10 +10,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.example.eshop.auth.OAuth2LoginSuccessHandler;
 import com.example.eshop.common.BusinessException;
 import com.example.eshop.config.SecurityConfig;
+import com.example.eshop.user.CurrentUsers;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -34,7 +35,13 @@ class OrderControllerTest {
     @Autowired MockMvc mvc;
 
     @MockitoBean OrderService service;
-    @MockitoBean OAuth2LoginSuccessHandler oauth2Handler;
+    @MockitoBean CurrentUsers currentUsers;
+
+    /** The token's user maps to shop user 7 (provisioning itself is covered by CurrentUsersTest). */
+    @BeforeEach
+    void tokenUserIsShopUser7() {
+        when(currentUsers.id(any())).thenReturn(7L);
+    }
 
     @Test
     void placingAnOrderRequiresLogin() throws Exception {

@@ -1,5 +1,9 @@
 import { Page, expect } from '@playwright/test';
 
+/** Sign-in and registration pages belong to cloud/auth-server (http://localhost:9000). */
+export const AUTH_SERVER = /^http:\/\/localhost:9000\//;
+
+/** The admin seeded by the auth server (cloud/auth-server application-local.yml). */
 export const ADMIN = {
   email: process.env['E2E_ADMIN_EMAIL'] ?? 'admin@eshop.local',
   password: process.env['E2E_ADMIN_PASSWORD'] ?? 'Admin123!',
@@ -11,8 +15,11 @@ export function newCustomer() {
   return { email: `e2e.${id}@example.com`, password: 'Secret123!', firstName: 'Eve', lastName: `Tester${id}` };
 }
 
+/** Shop -> auth server sign-in page -> "Create an account" -> back in the shop, signed in. */
 export async function registerCustomer(page: Page, c: ReturnType<typeof newCustomer>) {
-  await page.goto('/register');
+  await page.goto('/login');
+  await expect(page).toHaveURL(AUTH_SERVER);
+  await page.getByRole('link', { name: 'Create an account' }).click();
   await page.getByLabel('First name').fill(c.firstName);
   await page.getByLabel('Last name').fill(c.lastName);
   await page.getByLabel('Email').fill(c.email);
@@ -21,8 +28,10 @@ export async function registerCustomer(page: Page, c: ReturnType<typeof newCusto
   await expect(page.getByTestId('account-menu')).toContainText(c.email);
 }
 
+/** Open a shop page that needs a session; the app sends the browser to the auth server to sign in. */
 export async function signIn(page: Page, email: string, password: string, url = '/login') {
   await page.goto(url);
+  await expect(page).toHaveURL(AUTH_SERVER);
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();

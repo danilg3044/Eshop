@@ -1,7 +1,5 @@
 package com.example.eshop.user;
 
-import com.example.eshop.auth.CurrentUser;
-import com.example.eshop.common.NotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -18,26 +16,24 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProfileController {
 
     private final UserRepository users;
+    private final CurrentUsers currentUsers;
 
-    public ProfileController(UserRepository users) {
+    public ProfileController(UserRepository users, CurrentUsers currentUsers) {
         this.users = users;
+        this.currentUsers = currentUsers;
     }
 
     @GetMapping
     public UserDto get(@AuthenticationPrincipal Jwt jwt) {
-        return UserDto.from(load(jwt));
+        return UserDto.from(currentUsers.get(jwt));
     }
 
     @PutMapping
     @Transactional
     public UserDto update(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody ProfileDto body) {
-        AppUser user = load(jwt);
+        AppUser user = currentUsers.get(jwt);
         body.applyTo(user.getProfile());
         return UserDto.from(users.save(user));
     }
 
-    private AppUser load(Jwt jwt) {
-        return users.findById(CurrentUser.id(jwt))
-                .orElseThrow(() -> new NotFoundException("User not found"));
-    }
 }

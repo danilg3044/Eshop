@@ -46,12 +46,12 @@ describe('authInterceptor', () => {
     expect(httpMock.expectOne('/api/auth/me').request.headers.get('Authorization')).toBe('Bearer explicit');
   });
 
-  it('does not send the token to other hosts', () => {
+  it('never sends the token to other hosts, such as the auth server', () => {
     setup(fakeJwt());
 
-    http.get('https://picsum.photos/x').subscribe();
+    http.post('http://localhost:9000/oauth2/token', '').subscribe();
 
-    expect(httpMock.expectOne('https://picsum.photos/x').request.headers.has('Authorization')).toBe(false);
+    expect(httpMock.expectOne('http://localhost:9000/oauth2/token').request.headers.has('Authorization')).toBe(false);
   });
 
   it('reports a 401 on an authenticated call as an expired session', () => {
@@ -61,14 +61,5 @@ describe('authInterceptor', () => {
     httpMock.expectOne('/api/profile').flush(null, { status: 401, statusText: 'Unauthorized' });
 
     expect(store.dispatch).toHaveBeenCalledWith(AuthActions.sessionExpired());
-  });
-
-  it('does not treat a failed login as an expired session', () => {
-    setup(fakeJwt());
-
-    http.post('/api/auth/login', {}).subscribe({ error: () => undefined });
-    httpMock.expectOne('/api/auth/login').flush(null, { status: 401, statusText: 'Unauthorized' });
-
-    expect(store.dispatch).not.toHaveBeenCalled();
   });
 });

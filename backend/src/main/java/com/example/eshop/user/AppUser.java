@@ -10,8 +10,13 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Objects;
 
-/** A customer or administrator account. */
+/**
+ * The shop's record of a customer or administrator: profile and orders.
+ * Sign-in data (passwords, Google/Facebook ids) lives in cloud/auth-server; {@link #subject} links the two:
+ * it is the "sub" claim of that user's tokens. Email, role and provider are copied from the token.
+ */
 @Entity
 @Table(name = "users")
 public class AppUser {
@@ -20,11 +25,12 @@ public class AppUser {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** The auth server's account id ("sub" claim); null only for rows created before the auth server existed. */
+    @Column(unique = true)
+    private String subject;
+
     @Column(nullable = false, unique = true)
     private String email;
-
-    /** BCrypt hash; null for accounts that sign in with Google/Facebook. */
-    private String passwordHash;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -33,9 +39,6 @@ public class AppUser {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AuthProvider provider;
-
-    /** The user's id at Google/Facebook. */
-    private String providerId;
 
     @Column(nullable = false)
     private boolean enabled = true;
@@ -50,21 +53,30 @@ public class AppUser {
         // for JPA
     }
 
-    public AppUser(String email, Role role, AuthProvider provider) {
+    public AppUser(String subject, String email, Role role, AuthProvider provider) {
+        this.subject = subject;
         this.email = email;
         this.role = role;
         this.provider = provider;
         this.createdAt = Instant.now();
     }
 
+    /** Takes over what the auth server says about this user. Returns true if anything changed. */
+    public boolean syncFrom(String subject, String email, Role role, AuthProvider provider) {
+        boolean changed = !Objects.equals(this.subject, subject) || !Objects.equals(this.email, email)
+                || this.role != role || this.provider != provider;
+        this.subject = subject;
+        this.email = email;
+        this.role = role;
+        this.provider = provider;
+        return changed;
+    }
+
     public Long getId() { return id; }
+    public String getSubject() { return subject; }
     public String getEmail() { return email; }
-    public String getPasswordHash() { return passwordHash; }
-    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public Role getRole() { return role; }
     public AuthProvider getProvider() { return provider; }
-    public String getProviderId() { return providerId; }
-    public void setProviderId(String providerId) { this.providerId = providerId; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public Instant getCreatedAt() { return createdAt; }

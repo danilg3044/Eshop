@@ -31,3 +31,6 @@ build/
 ### VS Code ###
 .vscode/
 
+
+# Auth server secrets (Google/Facebook credentials, admin password)
+auth-server/src/main/resources/application-local.yml

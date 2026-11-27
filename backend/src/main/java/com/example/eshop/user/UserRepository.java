@@ -9,11 +9,9 @@ import org.springframework.data.repository.query.Param;
 
 public interface UserRepository extends JpaRepository<AppUser, Long> {
 
+    Optional<AppUser> findBySubject(String subject);
+
     Optional<AppUser> findByEmailIgnoreCase(String email);
-
-    boolean existsByEmailIgnoreCase(String email);
-
-    boolean existsByRole(Role role);
 
     @Query("""
             select u from AppUser u

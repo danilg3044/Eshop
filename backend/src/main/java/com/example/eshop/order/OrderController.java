@@ -1,6 +1,6 @@
 package com.example.eshop.order;
 
-import com.example.eshop.auth.CurrentUser;
+import com.example.eshop.user.CurrentUsers;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -19,19 +19,21 @@ import org.springframework.web.bind.annotation.RestController;
 public class OrderController {
 
     private final OrderService service;
+    private final CurrentUsers currentUsers;
 
-    public OrderController(OrderService service) {
+    public OrderController(OrderService service, CurrentUsers currentUsers) {
         this.service = service;
+        this.currentUsers = currentUsers;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public OrderDto place(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody PlaceOrderRequest request) {
-        return service.place(CurrentUser.id(jwt), request);
+        return service.place(currentUsers.id(jwt), request);
     }
 
     @GetMapping("/mine")
     public List<OrderDto> mine(@AuthenticationPrincipal Jwt jwt) {
-        return service.forUser(CurrentUser.id(jwt));
+        return service.forUser(currentUsers.id(jwt));
     }
 }

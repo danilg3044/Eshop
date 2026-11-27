@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { ADMIN, newCustomer, registerCustomer } from './helpers';
+import { ADMIN, newCustomer, registerCustomer, signIn } from './helpers';
 
 test('admin sees a new order under Current orders and moves it to history', async ({ browser }) => {
   // A customer places an order (in its own browser context).
@@ -17,14 +17,9 @@ test('admin sees a new order under Current orders and moves it to history', asyn
   const orderId = new URL(shopper.url()).searchParams.get('placed')!;
   await shopper.close();
 
-  // The admin signs in through the admin entry point (no social login offered there).
+  // The admin signs in at the auth server and lands back in the back office.
   const admin = await browser.newPage();
-  await admin.goto('/admin');
-  await expect(admin.getByRole('heading', { name: 'Administrator sign in' })).toBeVisible();
-  await expect(admin.getByText('or continue with')).toHaveCount(0);
-  await admin.getByLabel('Email').fill(ADMIN.email);
-  await admin.getByLabel('Password').fill(ADMIN.password);
-  await admin.getByRole('button', { name: 'Sign in' }).click();
+  await signIn(admin, ADMIN.email, ADMIN.password, '/admin');
   await expect(admin.getByText('EShop back office')).toBeVisible();
 
   // The order is listed under Current orders.
@@ -54,13 +49,26 @@ test('admin sees a new order under Current orders and moves it to history', asyn
 });
 
 test('admin can browse the full product repository including inactive items', async ({ page }) => {
-  await page.goto('/admin/products');
-  await page.getByLabel('Email').fill(ADMIN.email);
-  await page.getByLabel('Password').fill(ADMIN.password);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await signIn(page, ADMIN.email, ADMIN.password, '/admin/products');
 
   await expect(page).toHaveURL(/\/admin\/products/);
   await page.getByLabel('Search by name, description or SKU').fill('TOY-003');
   await page.getByLabel('Search by name, description or SKU').press('Enter');
   await expect(page.getByRole('row', { name: /Retro Board Game/ })).toContainText('Inactive');
+});
+
+test('admin rewrites a product description in the AI writer dialog and saves it', async ({ page }) => {
+  await signIn(page, ADMIN.email, ADMIN.password, '/admin/products');
+  await page.getByLabel('Search by name, description or SKU').fill('HOME-002');
+  await page.getByLabel('Search by name, description or SKU').press('Enter');
+  await page.getByRole('button', { name: /Write description for/ }).click();
+
+  // (Generating needs an AI provider; editing and applying works without one.)
+  const dialog = page.getByRole('dialog');
+  const text = `Checked by the e2e test at ${Date.now()}.`;
+  await dialog.getByLabel('Description').fill(text);
+  await dialog.getByRole('button', { name: 'Apply' }).click();
+
+  await expect(page.getByText(/Description of .* saved/)).toBeVisible();
+  await expect(dialog).toHaveCount(0);
 });

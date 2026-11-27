@@ -24,14 +24,19 @@ Start-CloudService 'discovery-server'
 Write-Host 'Waiting for Eureka on :8761 ...'
 while (-not (Test-NetConnection localhost -Port 8761 -InformationLevel Quiet -WarningAction SilentlyContinue)) { Start-Sleep 1 }
 
+# Issues the tokens every other service checks (needs the eshop_identity database, db\create-identity-database.sql).
+Start-CloudService 'auth-server'
 Start-CloudService 'arithmetic-service'
 Start-CloudService 'string-service'
 if ($Second) { Start-CloudService 'arithmetic-service' '8083' }
+# Set $env:AI_PROVIDER (anthropic + ANTHROPIC_API_KEY, or ollama) before running this script to enable AI.
+Start-CloudService 'ai-service'
 Start-CloudService 'gateway'
 
 Write-Host @'
 Started. Give the services ~30 s to register, then:
   Eureka dashboard  http://localhost:8761
-  Through gateway   http://localhost:8090/api/arithmetic/add?a=2&b=3
-                    http://localhost:8090/api/strings/reverse?text=hello
+  Sign-in pages     http://localhost:9000/login
+  Through gateway   http://localhost:8090/api/...   (every API needs a token now, see README "Calling the APIs")
+The shop backend and Angular app are started separately (backend: mvn spring-boot:run; frontend: npm run start:gateway).
 '@

@@ -1,0 +1,79 @@
+spring:
+  application:
+    name: auth-server
+  # Optional, gitignored: Google/Facebook credentials and the admin password (see application-local.yml.example)
+  config:
+    import: optional:classpath:application-local.yml
+  datasource:
+    # Its own database (db/create-identity-database.sql); Windows authentication like the shop backend.
+    url: ${IDENTITY_DB_URL:jdbc:sqlserver://localhost:1433;databaseName=eshop_identity;encrypt=true;trustServerCertificate=true;integratedSecurity=true}
+    username: ${IDENTITY_DB_USER:}
+    password: ${IDENTITY_DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        use_nationalized_character_data: true
+  security:
+    oauth2:
+      authorizationserver:
+        # The "iss" of every token. Resource servers find the signing keys from it
+        # (/.well-known/openid-configuration -> /oauth2/jwks), so it must be the URL they can reach.
+        issuer: ${AUTH_ISSUER:http://localhost:9000}
+        client:
+          # The Angular app: a public client (no secret, it runs in the browser), so PKCE is required.
+          eshop-web:
+            registration:
+              client-id: eshop-web
+              client-name: EShop web app
+              client-authentication-methods: none
+              authorization-grant-types: authorization_code
+              redirect-uris: ${ESHOP_FRONTEND_URL:http://localhost:4200}/auth/callback
+              post-logout-redirect-uris: ${ESHOP_FRONTEND_URL:http://localhost:4200}/
+              scopes: openid,profile,email
+            require-proof-key: true
+            require-authorization-consent: false
+            token:
+              access-token-time-to-live: 1h
+          # For trying the APIs from a terminal: a machine token without a user (curl -u dev-cli:dev-secret ...)
+          dev-cli:
+            registration:
+              client-id: dev-cli
+              client-secret: "{noop}dev-secret"
+              client-authentication-methods: client_secret_basic
+              authorization-grant-types: client_credentials
+              scopes: api
+
+server:
+  port: ${PORT:9000}
+  servlet:
+    session:
+      cookie:
+        # Cookies are shared by all ports of "localhost"; a distinct name keeps this session apart.
+        name: AUTHSESSION
+
+identity:
+  frontend-url: ${ESHOP_FRONTEND_URL:http://localhost:4200}
+  admin:
+    # The first admin is created at startup if none exists and a password is set.
+    email: ${ESHOP_ADMIN_EMAIL:admin@eshop.local}
+    password: ${ESHOP_ADMIN_PASSWORD:}
+
+eureka:
+  client:
+    enabled: ${EUREKA_ENABLED:true}
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+  instance:
+    hostname: localhost
+    instance-id: ${spring.application.name}:${server.port}
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 15
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

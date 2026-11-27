@@ -20,16 +20,23 @@ spring:
                 - Path=/api/strings/**
               filters:
                 - AddResponseHeader=X-Gateway-Route, strings
-            # The shop backend (backend/, registered as "eshop"): the rest of /api plus the Google/Facebook
-            # login endpoints and Swagger. It must stay LAST: routes are tried in order, and /api/** would
-            # otherwise also match /api/arithmetic/** and /api/strings/**.
+            # /api/ai/** -> ai-service (Spring AI product descriptions)
+            - id: ai
+              uri: lb://ai-service
+              predicates:
+                - Path=/api/ai/**
+              filters:
+                - AddResponseHeader=X-Gateway-Route, ai
+            # The shop backend (backend/, registered as "eshop"): the rest of /api plus Swagger.
+            # It must stay LAST: routes are tried in order, and /api/** would otherwise also match the routes above.
+            # (Sign-in is not routed: the browser talks to cloud/auth-server on :9000 directly, as an issuer should.)
             - id: eshop
               uri: lb://eshop
               predicates:
-                - Path=/api/**,/oauth2/**,/login/oauth2/**,/swagger-ui.html,/swagger-ui/**,/v3/api-docs/**
+                - Path=/api/**,/swagger-ui.html,/swagger-ui/**,/v3/api-docs/**
               filters:
-                # Keep "Host: localhost:8090" so the backend builds OAuth2 redirect URIs (and other absolute
-                # URLs) with the gateway's address, not the backend's own :8080.
+                # Keep "Host: localhost:8090" so absolute URLs the backend builds (Swagger's server URL)
+                # use the gateway's address, not the backend's own :8080.
                 - PreserveHostHeader
                 - AddResponseHeader=X-Gateway-Route, eshop
 

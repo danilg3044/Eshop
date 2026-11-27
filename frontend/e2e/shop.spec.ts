@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { newCustomer, registerCustomer } from './helpers';
+import { AUTH_SERVER, newCustomer, registerCustomer } from './helpers';
 
 test('visitors can browse and search the catalog', async ({ page }) => {
   await page.goto('/');
@@ -12,9 +12,10 @@ test('visitors can browse and search the catalog', async ({ page }) => {
   await expect(page.getByTestId('product-card')).toContainText('Ceramic Mug Set');
 });
 
-test('checkout requires signing in', async ({ page }) => {
+test('checkout requires signing in at the auth server', async ({ page }) => {
   await page.goto('/checkout');
-  await expect(page).toHaveURL(/\/login\?returnUrl=%2Fcheckout/);
+  await expect(page).toHaveURL(AUTH_SERVER);
+  await expect(page.getByRole('heading', { name: 'Sign in to EShop' })).toBeVisible();
 });
 
 test('a new customer registers, buys two products and sees the order', async ({ page }) => {
@@ -54,12 +55,14 @@ test('the session survives a reload and ends on sign out', async ({ page }) => {
 
   await page.getByTestId('account-menu').click();
   await page.getByRole('menuitem', { name: 'Sign out' }).click();
+  // OpenID Connect logout: the auth server ends its session too, then sends the browser back to the shop.
   await expect(page).toHaveURL('/');
   await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible();
 
-  // Signed out for real: protected pages send you to the login page again.
+  // Signed out for real (also at the auth server): protected pages ask for the password again.
   await page.goto('/orders');
-  await expect(page).toHaveURL(/\/login\?returnUrl=%2Forders/);
+  await expect(page).toHaveURL(AUTH_SERVER);
+  await expect(page.getByLabel('Password')).toBeVisible();
 });
 
 test('customers cannot open the back office', async ({ page }) => {

@@ -34,11 +34,8 @@ export const routes: Routes = [
         loadComponent: () => import('./features/shared/profile-page').then((m) => m.ProfilePage),
       },
       { path: 'login', title: 'Sign in · EShop', loadComponent: () => import('./features/auth/login').then((m) => m.Login) },
-      {
-        path: 'register',
-        title: 'Create account · EShop',
-        loadComponent: () => import('./features/auth/register').then((m) => m.Register),
-      },
+      // Registration is a page of cloud/auth-server now (linked from its sign-in page).
+      { path: 'register', redirectTo: 'login' },
       {
         path: 'auth/callback',
         title: 'Signing in · EShop',

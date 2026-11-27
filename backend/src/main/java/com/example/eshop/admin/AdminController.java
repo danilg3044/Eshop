@@ -9,10 +9,12 @@ import com.example.eshop.product.ProductService;
 import com.example.eshop.user.Role;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -28,6 +30,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminController {
 
     public record StatusChange(@NotNull OrderStatus status) {}
+
+    /** Max length = products.description column. */
+    public record DescriptionChange(@Size(max = 2000) String description) {}
 
     private final ProductService products;
     private final AdminUserService users;
@@ -52,6 +57,12 @@ public class AdminController {
     @GetMapping("/products/{id}")
     public ProductDto product(@PathVariable Long id) {
         return products.get(id, false);
+    }
+
+    /** Saves a description, e.g. one written by cloud/ai-service and accepted by the admin. */
+    @PutMapping("/products/{id}/description")
+    public ProductDto changeDescription(@PathVariable Long id, @Valid @RequestBody DescriptionChange body) {
+        return products.changeDescription(id, body.description());
     }
 
     // ---- users ----

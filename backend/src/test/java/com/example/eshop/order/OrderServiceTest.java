@@ -43,7 +43,7 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        customer = withId(new AppUser("dana@example.com", Role.USER, AuthProvider.LOCAL), 7L);
+        customer = withId(new AppUser("101", "dana@example.com", Role.USER, AuthProvider.LOCAL), 7L);
         mug = withId(new Product("HOME-002", "Mug", "Home", new BigDecimal("10.00"), 5), 1L);
         lamp = withId(new Product("HOME-003", "Lamp", "Home", new BigDecimal("45.50"), 2), 2L);
         // lenient: only the place-order tests look the user up

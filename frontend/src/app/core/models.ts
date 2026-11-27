@@ -73,11 +73,6 @@ export interface Order {
   items: OrderItem[];
 }
 
-export interface TokenResponse {
-  accessToken: string;
-  expiresAt: string;
-}
-
 export interface UserSummary {
   user: User;
   orderCount: number;
@@ -96,3 +91,16 @@ export const NEXT_STATUSES: Record<OrderStatus, OrderStatus[]> = {
   DELIVERED: [],
   CANCELLED: [],
 };
+
+/** POST /api/ai/product-descriptions (cloud/ai-service). */
+export interface DescriptionRequest {
+  name: string;
+  category: string | null;
+  keywords: string[];
+  currentDescription: string | null;
+}
+
+export interface DescriptionSuggestion {
+  description: string;
+  highlights: string[];
+}

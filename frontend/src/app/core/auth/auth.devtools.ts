@@ -1,17 +1,29 @@
 import { Action } from '@ngrx/store';
 import { AuthActions } from './auth.actions';
+import { AuthState } from './auth.models';
+
+const HIDDEN = '***';
 
 /**
- * Redux DevTools records every action. Mask passwords so they never show up in the action log
- * (wired in app.config.ts via provideStoreDevtools({ actionSanitizer })).
+ * Redux DevTools records every action and state. Mask tokens and authorization codes so they never show up
+ * there (wired in app.config.ts via provideStoreDevtools({ actionSanitizer, stateSanitizer })).
  */
 export function maskSecrets(action: Action): Action {
-  if (action.type === AuthActions.login.type) {
-    return { ...action, password: '***' } as Action;
+  switch (action.type) {
+    case AuthActions.signInSucceeded.type:
+    case AuthActions.restored.type:
+      return { ...action, token: HIDDEN, idToken: HIDDEN } as Action;
+    case AuthActions.exchangeCode.type:
+      return { ...action, code: HIDDEN } as Action;
+    default:
+      return action;
   }
-  if (action.type === AuthActions.register.type) {
-    const register = action as ReturnType<typeof AuthActions.register>;
-    return { ...register, registration: { ...register.registration, password: '***' } } as Action;
+}
+
+export function maskTokensInState<S>(state: S): S {
+  const auth = (state as { auth?: AuthState }).auth;
+  if (!auth?.token) {
+    return state;
   }
-  return action;
+  return { ...state, auth: { ...auth, token: HIDDEN, idToken: HIDDEN } };
 }

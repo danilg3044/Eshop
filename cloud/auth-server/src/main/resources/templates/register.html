@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Create account · EShop</title>
+  <link rel="stylesheet" th:href="@{/css/auth.css}">
+</head>
+<body>
+<main class="card">
+  <h1>Create your account</h1>
+
+  <form method="post" th:action="@{/register}" th:object="${form}" novalidate>
+    <label for="firstName">First name</label>
+    <input id="firstName" type="text" autocomplete="given-name" th:field="*{firstName}"
+           th:attr="aria-invalid=${#fields.hasErrors('firstName')}, aria-describedby='firstName-error'">
+    <p id="firstName-error" class="field-error" th:errors="*{firstName}"></p>
+
+    <label for="lastName">Last name</label>
+    <input id="lastName" type="text" autocomplete="family-name" th:field="*{lastName}"
+           th:attr="aria-invalid=${#fields.hasErrors('lastName')}, aria-describedby='lastName-error'">
+    <p id="lastName-error" class="field-error" th:errors="*{lastName}"></p>
+
+    <label for="email">Email</label>
+    <input id="email" type="email" autocomplete="email" th:field="*{email}"
+           th:attr="aria-invalid=${#fields.hasErrors('email')}, aria-describedby='email-error'">
+    <p id="email-error" class="field-error" role="alert" th:errors="*{email}"></p>
+
+    <label for="password">Password</label>
+    <input id="password" type="password" autocomplete="new-password" th:field="*{password}"
+           th:attr="aria-invalid=${#fields.hasErrors('password')}, aria-describedby='password-hint password-error'">
+    <p id="password-hint" class="hint">At least 8 characters</p>
+    <p id="password-error" class="field-error" th:errors="*{password}"></p>
+
+    <button type="submit">Create account</button>
+  </form>
+
+  <p class="footer">Already registered? <a th:href="@{/login}">Sign in</a></p>
+</main>
+</body>
+</html>

@@ -1,6 +1,11 @@
 spring:
   application:
     name: string-service          # the name it is registered under in Eureka; the gateway routes to lb://string-service
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AUTH_ISSUER:http://localhost:9000}   # cloud/auth-server: tokens must come from there
   mvc:
     problemdetails:
       enabled: true               # missing/invalid parameters -> RFC 9457 JSON errors

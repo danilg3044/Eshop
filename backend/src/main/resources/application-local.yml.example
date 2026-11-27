@@ -11,21 +11,5 @@ spring:
     # url: jdbc:sqlserver://localhost:1433;databaseName=eshop;encrypt=true;trustServerCertificate=true
     # username: eshop
     # password: CHANGE_ME
-  security:
-    oauth2:
-      client:
-        registration:
-          # Remove a block you have no credentials for; its login button disappears automatically.
-          google:
-            client-id: YOUR_GOOGLE_CLIENT_ID
-            client-secret: YOUR_GOOGLE_CLIENT_SECRET
-            scope: openid,profile,email
-          facebook:
-            client-id: YOUR_FACEBOOK_APP_ID
-            client-secret: YOUR_FACEBOOK_APP_SECRET
-            scope: email,public_profile
 
-eshop:
-  admin:
-    email: admin@eshop.local
-    password: Admin123!
+# Sign-in (accounts, the admin, Google/Facebook) is configured in cloud/auth-server, not here.

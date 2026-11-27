@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · EShop</title>
+  <link rel="stylesheet" th:href="@{/css/auth.css}">
+</head>
+<body>
+<main class="card">
+  <h1>Sign in to EShop</h1>
+
+  <p class="message error" role="alert" th:if="${param.error}">Invalid email or password.</p>
+  <p class="message error" role="alert" th:if="${param.social_error}" th:text="${param.social_error}"></p>
+  <p class="message info" role="status" th:if="${param.logout}">You have been signed out.</p>
+
+  <!-- Spring Security form login: posts "username" and "password"; th:action adds the CSRF token -->
+  <form method="post" th:action="@{/login}">
+    <label for="username">Email</label>
+    <input id="username" name="username" type="email" autocomplete="username" required autofocus>
+
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+
+    <button type="submit">Sign in</button>
+  </form>
+
+  <section class="social" th:if="${!providers.isEmpty()}" aria-label="Sign in with another account">
+    <p>or continue with</p>
+    <a class="button secondary" th:each="p : ${providers}" th:href="@{/oauth2/authorization/{id}(id=${p.id})}"
+       th:text="${p.name}">Google</a>
+  </section>
+
+  <p class="footer">New here? <a th:href="@{/register}">Create an account</a></p>
+  <p class="footer"><a th:href="${shopUrl}">Back to the shop</a></p>
+</main>
+</body>
+</html>
