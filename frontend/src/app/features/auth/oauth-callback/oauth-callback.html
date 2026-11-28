@@ -1,0 +1,10 @@
+<section class="callback">
+  @if (failure(); as msg) {
+    <h1>Sign in failed</h1>
+    <p role="alert">{{ msg }}</p>
+    <a mat-flat-button routerLink="/login">Back to sign in</a>
+  } @else {
+    <mat-spinner diameter="40" aria-label="Signing you in" />
+    <p>Signing you in…</p>
+  }
+</section>

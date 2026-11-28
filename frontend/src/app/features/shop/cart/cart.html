@@ -1,0 +1,38 @@
+<h1>Shopping cart</h1>
+@if (isEmpty()) {
+  <p>Your cart is empty.</p>
+  <a mat-flat-button routerLink="/">Browse products</a>
+} @else {
+  <table class="lines">
+    <thead>
+      <tr><th scope="col">Product</th><th scope="col">Price</th><th scope="col">Quantity</th><th scope="col">Total</th><th scope="col"><span class="visually-hidden">Remove</span></th></tr>
+    </thead>
+    <tbody>
+      @for (l of lines(); track l.productId) {
+        <tr data-testid="cart-line">
+          <td><a [routerLink]="['/products', l.productId]">{{ l.name }}</a></td>
+          <td>{{ l.price | currency }}</td>
+          <td class="qty">
+            <button mat-icon-button (click)="setQuantity(l.productId, l.quantity - 1)" [attr.aria-label]="'Decrease ' + l.name">
+              <mat-icon>remove</mat-icon>
+            </button>
+            <span aria-live="polite">{{ l.quantity }}</span>
+            <button mat-icon-button [disabled]="l.quantity >= l.stock" (click)="setQuantity(l.productId, l.quantity + 1)" [attr.aria-label]="'Increase ' + l.name">
+              <mat-icon>add</mat-icon>
+            </button>
+          </td>
+          <td>{{ l.price * l.quantity | currency }}</td>
+          <td>
+            <button mat-icon-button (click)="remove(l.productId)" [attr.aria-label]="'Remove ' + l.name">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+  <div class="summary">
+    <span class="total" data-testid="cart-total">Total: {{ total() | currency }}</span>
+    <a mat-flat-button routerLink="/checkout">Checkout</a>
+  </div>
+}

@@ -1,0 +1,26 @@
+<a mat-button routerLink="/"><mat-icon>arrow_back</mat-icon> Back to catalog</a>
+@if (product.error()) {
+  <p role="alert">This product is not available.</p>
+} @else if (product.hasValue()) {
+  @let p = product.value();
+  <article class="detail">
+    @if (p.imageUrl) {
+      <img [ngSrc]="p.imageUrl" width="400" height="300" priority alt="" />
+    }
+    <div>
+      <h1>{{ p.name }}</h1>
+      <p class="meta">{{ p.category }} · SKU {{ p.sku }}</p>
+      <p class="price">{{ p.price | currency }}</p>
+      <p>{{ p.description }}</p>
+      <p>{{ p.stock > 0 ? p.stock + ' in stock' : 'Out of stock' }}</p>
+      <div class="buy">
+        <mat-form-field class="qty" subscriptSizing="dynamic">
+          <mat-label>Quantity</mat-label>
+          <input matInput type="number" min="1" [max]="p.stock" [value]="quantity()"
+                 (input)="quantity.set(+$any($event.target).value || 1)" />
+        </mat-form-field>
+        <button mat-flat-button [disabled]="p.stock === 0" (click)="add(p)">Add to cart</button>
+      </div>
+    </div>
+  </article>
+}

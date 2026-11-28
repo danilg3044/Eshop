@@ -1,0 +1,8 @@
+.detail { display: grid; grid-template-columns: minmax(0, 400px) 1fr; gap: 32px; margin-top: 16px; }
+img { width: 100%; height: auto; border-radius: 12px; }
+h1 { font: var(--mat-sys-headline-medium); margin: 0; }
+.meta { color: var(--mat-sys-on-surface-variant); }
+.price { font: var(--mat-sys-headline-small); }
+.buy { display: flex; gap: 16px; align-items: center; }
+.qty { width: 120px; }
+@media (max-width: 700px) { .detail { grid-template-columns: 1fr; } }

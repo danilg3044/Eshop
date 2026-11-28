@@ -1,0 +1,9 @@
+:host { display: flex; flex-direction: column; height: 100vh; }
+.bar { background: #263238; color: #fff; gap: 8px; }
+.bar a, .bar button { color: #fff; }
+.title { font: var(--mat-sys-title-large); }
+.spacer { flex: 1; }
+.who { font: var(--mat-sys-body-medium); opacity: 0.85; }
+.container { flex: 1; }
+mat-sidenav { width: 220px; }
+.page { padding: 24px; }

@@ -1,0 +1,7 @@
+.narrow { max-width: 720px; margin: 24px auto; }
+h1 { margin: 0; font: var(--mat-sys-headline-small); }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; margin-top: 16px; }
+.wide { grid-column: 1 / -1; }
+.actions { display: flex; gap: 16px; align-items: center; }
+.error { color: var(--mat-sys-error); }
+@media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }

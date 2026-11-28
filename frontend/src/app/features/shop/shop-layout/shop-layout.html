@@ -1,0 +1,31 @@
+<mat-toolbar class="bar">
+  <a routerLink="/" class="brand">EShop</a>
+  <span class="spacer"></span>
+  <a mat-icon-button routerLink="/cart" aria-label="Shopping cart, {{ cartCount() }} items">
+    <mat-icon [matBadge]="cartCount() || null" matBadgeColor="accent" aria-hidden="false">shopping_cart</mat-icon>
+  </a>
+  @if (isLoggedIn()) {
+    <button mat-button [matMenuTriggerFor]="account" data-testid="account-menu">
+      <mat-icon>account_circle</mat-icon> {{ email() }}
+    </button>
+    <mat-menu #account="matMenu">
+      <a mat-menu-item routerLink="/orders">My orders</a>
+      <a mat-menu-item routerLink="/profile">Profile</a>
+      @if (isAdmin()) {
+        <a mat-menu-item routerLink="/admin">Back office</a>
+      }
+      <button mat-menu-item (click)="logout()">Sign out</button>
+    </mat-menu>
+  } @else {
+    <a mat-button routerLink="/login">Sign in</a>
+  }
+</mat-toolbar>
+
+<main class="page">
+  <router-outlet />
+</main>
+
+<footer>
+  <span>EShop sample store</span>
+  <a routerLink="/admin">Administration</a>
+</footer>

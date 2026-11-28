@@ -1,0 +1,39 @@
+<a mat-button routerLink="../"><mat-icon>arrow_back</mat-icon> All users</a>
+@if (detail.hasValue()) {
+  @let u = detail.value().user;
+  <mat-card class="profile">
+    <mat-card-header>
+      <mat-card-title><h1>{{ u.profile.firstName }} {{ u.profile.lastName }}</h1></mat-card-title>
+      <mat-card-subtitle>{{ u.email }} · {{ u.role }} · signs in with {{ u.provider }}</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <dl>
+        <dt>Phone</dt><dd>{{ u.profile.phone || '—' }}</dd>
+        <dt>Address</dt>
+        <dd>{{ u.profile.addressLine || '—' }} {{ u.profile.city }} {{ u.profile.postalCode }} {{ u.profile.country }}</dd>
+        <dt>Registered</dt><dd>{{ u.createdAt | date: 'medium' }}</dd>
+        <dt>Account</dt><dd>{{ u.enabled ? 'Enabled' : 'Disabled' }}</dd>
+      </dl>
+    </mat-card-content>
+  </mat-card>
+
+  <h2>Orders ({{ detail.value().orders.length }})</h2>
+  <table class="orders">
+    <thead><tr><th scope="col">#</th><th scope="col">Date</th><th scope="col">Items</th><th scope="col">Total</th><th scope="col">Status</th></tr></thead>
+    <tbody>
+      @for (o of detail.value().orders; track o.id) {
+        <tr>
+          <td>{{ o.id }}</td>
+          <td>{{ o.createdAt | date: 'short' }}</td>
+          <td>{{ o.items.length }}</td>
+          <td>{{ o.total | currency }}</td>
+          <td><app-status-chip [status]="o.status" /></td>
+        </tr>
+      } @empty {
+        <tr><td colspan="5">No orders yet.</td></tr>
+      }
+    </tbody>
+  </table>
+} @else if (detail.error()) {
+  <p role="alert">User not found.</p>
+}

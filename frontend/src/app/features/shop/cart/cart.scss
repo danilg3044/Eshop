@@ -1,0 +1,6 @@
+h1 { font: var(--mat-sys-headline-medium); }
+.lines { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--mat-sys-outline-variant); }
+.qty { display: flex; align-items: center; gap: 4px; }
+.summary { display: flex; justify-content: flex-end; align-items: center; gap: 24px; margin-top: 24px; }
+.total { font: var(--mat-sys-title-large); }

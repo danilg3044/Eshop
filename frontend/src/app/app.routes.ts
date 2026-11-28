@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { adminGuard, authGuard } from './core/auth/auth.guards';
-import { ShopLayout } from './features/shop/shop-layout';
+import { ShopLayout } from './features/shop/shop-layout/shop-layout';
 
 export const routes: Routes = [
   // Customer storefront
@@ -8,38 +8,38 @@ export const routes: Routes = [
     path: '',
     component: ShopLayout,
     children: [
-      { path: '', title: 'EShop', loadComponent: () => import('./features/shop/catalog').then((m) => m.Catalog) },
+      { path: '', title: 'EShop', loadComponent: () => import('./features/shop/catalog/catalog').then((m) => m.Catalog) },
       {
         path: 'products/:id',
         title: 'Product · EShop',
-        loadComponent: () => import('./features/shop/product-detail').then((m) => m.ProductDetail),
+        loadComponent: () => import('./features/shop/product-detail/product-detail').then((m) => m.ProductDetail),
       },
-      { path: 'cart', title: 'Cart · EShop', loadComponent: () => import('./features/shop/cart').then((m) => m.Cart) },
+      { path: 'cart', title: 'Cart · EShop', loadComponent: () => import('./features/shop/cart/cart').then((m) => m.Cart) },
       {
         path: 'checkout',
         title: 'Checkout · EShop',
         canActivate: [authGuard],
-        loadComponent: () => import('./features/shop/checkout').then((m) => m.Checkout),
+        loadComponent: () => import('./features/shop/checkout/checkout').then((m) => m.Checkout),
       },
       {
         path: 'orders',
         title: 'My orders · EShop',
         canActivate: [authGuard],
-        loadComponent: () => import('./features/shop/my-orders').then((m) => m.MyOrders),
+        loadComponent: () => import('./features/shop/my-orders/my-orders').then((m) => m.MyOrders),
       },
       {
         path: 'profile',
         title: 'Profile · EShop',
         canActivate: [authGuard],
-        loadComponent: () => import('./features/shared/profile-page').then((m) => m.ProfilePage),
+        loadComponent: () => import('./features/shared/profile-page/profile-page').then((m) => m.ProfilePage),
       },
-      { path: 'login', title: 'Sign in · EShop', loadComponent: () => import('./features/auth/login').then((m) => m.Login) },
+      { path: 'login', title: 'Sign in · EShop', loadComponent: () => import('./features/auth/login/login').then((m) => m.Login) },
       // Registration is a page of cloud/auth-server now (linked from its sign-in page).
       { path: 'register', redirectTo: 'login' },
       {
         path: 'auth/callback',
         title: 'Signing in · EShop',
-        loadComponent: () => import('./features/auth/oauth-callback').then((m) => m.OAuthCallback),
+        loadComponent: () => import('./features/auth/oauth-callback/oauth-callback').then((m) => m.OAuthCallback),
       },
     ],
   },

@@ -1,0 +1,51 @@
+<h1 class="visually-hidden">Product catalog</h1>
+<div class="filters">
+  <mat-form-field class="search" subscriptSizing="dynamic">
+    <mat-label>Search products</mat-label>
+    <input matInput #box [value]="query()" (keyup.enter)="search(box.value)" data-testid="search" />
+    <button matSuffix mat-icon-button aria-label="Search" (click)="search(box.value)"><mat-icon>search</mat-icon></button>
+  </mat-form-field>
+
+  <mat-button-toggle-group [value]="category()" (change)="setCategory($event.value)" aria-label="Category">
+    <mat-button-toggle value="">All</mat-button-toggle>
+    @for (c of categories.value() ?? []; track c) {
+      <mat-button-toggle [value]="c">{{ c }}</mat-button-toggle>
+    }
+  </mat-button-toggle-group>
+</div>
+
+@if (products.error()) {
+  <p role="alert" class="error">Could not load products. Is the backend running?</p>
+} @else if (products.hasValue()) {
+  @let page = products.value();
+  @if (page.content.length === 0) {
+    <p>No products match your search.</p>
+  }
+  <div class="grid">
+    @for (p of page.content; track p.id; let i = $index) {
+      <mat-card class="product" data-testid="product-card">
+        @if (p.imageUrl) {
+          <img mat-card-image [ngSrc]="p.imageUrl" width="400" height="300" [priority]="i < 4" alt="" />
+        }
+        <mat-card-header>
+          <mat-card-title><a [routerLink]="['/products', p.id]">{{ p.name }}</a></mat-card-title>
+          <mat-card-subtitle>{{ p.category }}</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <p class="price">{{ p.price | currency }}</p>
+          <p class="stock">{{ p.stock > 0 ? p.stock + ' in stock' : 'Out of stock' }}</p>
+        </mat-card-content>
+        <mat-card-actions>
+          <button mat-flat-button [disabled]="p.stock === 0" (click)="addToCart(p)">Add to cart</button>
+        </mat-card-actions>
+      </mat-card>
+    }
+  </div>
+  <mat-paginator
+    [length]="page.totalElements"
+    [pageIndex]="page.page"
+    [pageSize]="pageSize"
+    [hidePageSize]="true"
+    (page)="onPage($event)"
+    aria-label="Product pages" />
+}

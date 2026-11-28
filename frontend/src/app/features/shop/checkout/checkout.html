@@ -1,0 +1,60 @@
+<h1>Checkout</h1>
+@if (isEmpty()) {
+  <p>Your cart is empty. <a routerLink="/">Continue shopping</a></p>
+} @else {
+  <div class="layout">
+    <mat-card>
+      <mat-card-header><mat-card-title><h2>Shipping address</h2></mat-card-title></mat-card-header>
+      <mat-card-content>
+        <form [formRoot]="shippingForm" id="checkout-form">
+          <mat-form-field>
+            <mat-label>Full name</mat-label>
+            <input matInput autocomplete="name" [formField]="shippingForm.name" />
+          </mat-form-field>
+          <app-field-error [field]="shippingForm.name" />
+          <mat-form-field>
+            <mat-label>Address</mat-label>
+            <input matInput autocomplete="street-address" [formField]="shippingForm.addressLine" />
+          </mat-form-field>
+          <app-field-error [field]="shippingForm.addressLine" />
+          <mat-form-field>
+            <mat-label>City</mat-label>
+            <input matInput autocomplete="address-level2" [formField]="shippingForm.city" />
+          </mat-form-field>
+          <app-field-error [field]="shippingForm.city" />
+          <mat-form-field>
+            <mat-label>Postal code</mat-label>
+            <input matInput autocomplete="postal-code" [formField]="shippingForm.postalCode" />
+          </mat-form-field>
+          <app-field-error [field]="shippingForm.postalCode" />
+          <mat-form-field>
+            <mat-label>Country</mat-label>
+            <input matInput autocomplete="country-name" [formField]="shippingForm.country" />
+          </mat-form-field>
+          <app-field-error [field]="shippingForm.country" />
+        </form>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card>
+      <mat-card-header><mat-card-title><h2>Order summary</h2></mat-card-title></mat-card-header>
+      <mat-card-content>
+        <ul class="summary">
+          @for (l of lines(); track l.productId) {
+            <li><span>{{ l.quantity }} × {{ l.name }}</span><span>{{ l.price * l.quantity | currency }}</span></li>
+          }
+        </ul>
+        <p class="total">Total: {{ total() | currency }}</p>
+        <p class="note">Payment is simulated: the order is created as PENDING and handled by the store.</p>
+        @if (error()) {
+          <p class="error" role="alert">{{ error() }}</p>
+        }
+      </mat-card-content>
+      <mat-card-actions>
+        <button mat-flat-button type="submit" form="checkout-form" [disabled]="shippingForm().submitting()">
+          Place order
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+}

@@ -1,0 +1,44 @@
+<h2 mat-dialog-title>Description for {{ product.name }}</h2>
+<mat-dialog-content>
+  <p class="hint">The AI service writes a suggestion using only the facts below. Check it before you apply it.</p>
+
+  <mat-form-field class="wide">
+    <mat-label>Keywords</mat-label>
+    <input matInput [formField]="draft.keywords" placeholder="hand-glazed, set of 4, dishwasher safe" />
+    <mat-hint>Comma-separated facts the text may use</mat-hint>
+  </mat-form-field>
+
+  <div class="generate">
+    <button mat-stroked-button type="button" (click)="generate()" [disabled]="busy()">
+      {{ generated() ? 'Write another' : 'Write with AI' }}
+    </button>
+  </div>
+  @if (busy()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Working" />
+  }
+  @if (error(); as message) {
+    <p class="error" role="alert">{{ message }}</p>
+  }
+
+  <mat-form-field class="wide">
+    <mat-label>Description</mat-label>
+    <textarea matInput rows="6" [formField]="draft.description"></textarea>
+    <mat-hint align="end">{{ model().description.length }} / {{ max }}</mat-hint>
+    @for (e of draft.description().errors(); track e.kind) {
+      <mat-error>{{ e.message }}</mat-error>
+    }
+  </mat-form-field>
+
+  @if (highlights().length) {
+    <h3>Highlights</h3>
+    <ul data-testid="highlights">
+      @for (h of highlights(); track h) {
+        <li>{{ h }}</li>
+      }
+    </ul>
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" mat-dialog-close>Cancel</button>
+  <button mat-flat-button type="button" (click)="apply()" [disabled]="busy() || draft().invalid()">Apply</button>
+</mat-dialog-actions>

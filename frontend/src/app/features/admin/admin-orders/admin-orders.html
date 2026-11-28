@@ -1,0 +1,47 @@
+<h1>Orders</h1>
+<mat-tab-group [selectedIndex]="scope() === 'CURRENT' ? 0 : 1" (selectedIndexChange)="setScope($event === 0 ? 'CURRENT' : 'HISTORY')">
+  <mat-tab label="Current orders" />
+  <mat-tab label="Order history" />
+</mat-tab-group>
+
+@if (orders.hasValue()) {
+  @let page = orders.value();
+  <table class="orders">
+    <thead>
+      <tr><th scope="col">#</th><th scope="col">Placed</th><th scope="col">Customer</th><th scope="col">Items</th>
+          <th scope="col">Total</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr>
+    </thead>
+    <tbody>
+      @for (o of page.content; track o.id) {
+        <tr data-testid="admin-order">
+          <td>{{ o.id }}</td>
+          <td>{{ o.createdAt | date: 'short' }}</td>
+          <td><a [routerLink]="['../users', o.userId]">{{ o.userEmail }}</a></td>
+          <td>
+            @for (i of o.items; track i.productId) {
+              <div>{{ i.quantity }} × {{ i.productName }}</div>
+            }
+          </td>
+          <td>{{ o.total | currency }}</td>
+          <td><app-status-chip [status]="o.status" /></td>
+          <td>
+            @if (next(o.status).length) {
+              <button mat-stroked-button [matMenuTriggerFor]="menu" [attr.aria-label]="'Change status of order ' + o.id">Change status</button>
+              <mat-menu #menu="matMenu">
+                @for (s of next(o.status); track s) {
+                  <button mat-menu-item (click)="changeStatus(o, s)">Mark as {{ s.toLowerCase() }}</button>
+                }
+              </mat-menu>
+            }
+          </td>
+        </tr>
+      } @empty {
+        <tr><td colspan="7">No orders here.</td></tr>
+      }
+    </tbody>
+  </table>
+  <mat-paginator [length]="page.totalElements" [pageIndex]="page.page" [pageSize]="page.size"
+                 [pageSizeOptions]="[10, 20, 50]" (page)="onPage($event)" aria-label="Order pages" />
+} @else if (orders.error()) {
+  <p role="alert">Could not load orders.</p>
+}

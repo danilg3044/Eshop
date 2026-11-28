@@ -1,0 +1,8 @@
+.profile { margin: 16px 0; }
+h1 { font: var(--mat-sys-headline-small); margin: 0; }
+h2 { font: var(--mat-sys-title-large); }
+dl { display: grid; grid-template-columns: max-content 1fr; gap: 8px 24px; }
+dt { color: var(--mat-sys-on-surface-variant); }
+dd { margin: 0; }
+.orders { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--mat-sys-outline-variant); }

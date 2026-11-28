@@ -195,7 +195,7 @@ The shop backend in the gateway:
 
 - `core/`: services (`@Service()` decorator, Angular 22), interceptor, guards, models that mirror the backend DTOs, and `NEXT_STATUSES`, which mirrors `OrderStatus.canTransitionTo`.
 - `features/shop`: customer area under `ShopLayout`.
-- `features/admin`: lazy `ADMIN_ROUTES` under `AdminLayout`, behind `adminGuard`. `description-writer.ts` is the AI description dialog (MatDialog), opened from `AdminProducts`.
+- `features/admin`: lazy `ADMIN_ROUTES` under `AdminLayout`, behind `adminGuard`. `description-writer/` is the AI description dialog (MatDialog), opened from `AdminProducts`.
 - `features/auth`: `login` (starts the redirect to the auth server) and `oauth-callback` (code + state → `exchangeCode`).
 - `features/shared`: profile page (used in both areas), field-error, status chip.
 
@@ -208,6 +208,7 @@ Patterns used throughout:
   - Each slice lives in its own folder:
     - `core/auth/`: `AuthActions`, `authFeature`, selectors, `AuthEffects`, and `AuthApi` for the stateless HTTP calls.
     - `core/cart/`: `CartActions`, `cartFeature`, selectors, `CartEffects`.
+- Each component has its own folder holding `name.ts`, `name.html`, `name.scss` and `name.spec.ts`, e.g. `features/shop/cart/`. Route files (`admin.routes.ts`) and styles shared by several components (`features/auth/auth.scss`) sit one level up, in the area folder.
   - Both are registered in `app.config.ts`.
   - Components read with `store.selectSignal(selectX)` and write with `store.dispatch(XActions.y(...))`.
   - Reducers and selectors stay pure: no `Date.now()`, no storage. Effects do HTTP, storage and navigation:
