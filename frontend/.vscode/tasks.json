@@ -1,28 +1,21 @@
 {
   // For more information, visit: https://go.microsoft.com/fwlink/?LinkId=733558
+  //
+  // This task puts the project's own Node 24 (../.tools/node) and Angular CLI (node_modules/.bin) first on PATH,
+  // like dev-env.ps1 does for a terminal. Without it VS Code uses the machine-wide Node 18, the Angular CLI refuses
+  // to start, and the debugger opens http://localhost:4200 with nothing listening ("This site can't be reached").
+  // Open the "frontend" folder in VS Code so these files are used.
   "version": "2.0.0",
   "tasks": [
     {
-      "type": "npm",
-      "script": "start",
-      "isBackground": true,
-      "problemMatcher": {
-        "owner": "typescript",
-        "pattern": "$tsc",
-        "background": {
-          "activeOnStart": true,
-          "beginsPattern": {
-            "regexp": "Changes detected"
-          },
-          "endsPattern": {
-            "regexp": "bundle generation (complete|failed)"
-          }
+      "label": "npm: start",
+      "type": "shell",
+      "command": "npm start",
+      "options": {
+        "env": {
+          "PATH": "${workspaceFolder}\\..\\.tools\\node;${workspaceFolder}\\node_modules\\.bin;${env:PATH}"
         }
-      }
-    },
-    {
-      "type": "npm",
-      "script": "test",
+      },
       "isBackground": true,
       "problemMatcher": {
         "owner": "typescript",

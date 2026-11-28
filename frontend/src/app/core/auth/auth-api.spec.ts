@@ -63,6 +63,18 @@ describe('AuthApi', () => {
     expect(url.searchParams.get('id_token_hint')).toBe('the-id-token');
     expect(url.searchParams.get('post_logout_redirect_uri')).toBe(`${origin}/`);
   });
+
+  it('follows <base href> when the app is served under a path, e.g. /eshop/ by the backend', () => {
+    const base = document.createElement('base');
+    base.href = '/eshop/';
+    document.head.prepend(base);
+    try {
+      expect(api.redirectUri()).toBe(`${origin}/eshop/auth/callback`);
+      expect(new URL(api.logoutUrl('t')).searchParams.get('post_logout_redirect_uri')).toBe(`${origin}/eshop/`);
+    } finally {
+      base.remove();
+    }
+  });
 });
 
 describe('Redux DevTools masking', () => {

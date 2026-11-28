@@ -10,11 +10,34 @@
       "url": "http://localhost:4200/"
     },
     {
-      "name": "ng test",
-      "type": "chrome",
+      // Unit tests run on Vitest inside Node (no browser), so this is a Node debug session:
+      // VS Code starts "ng test" with the project's Node 24 and attaches to the Vitest worker processes it spawns.
+      // Set breakpoints in *.spec.ts or in the code under test; source maps lead back to the .ts files.
+      "name": "Vitest: all unit tests",
+      "type": "node",
       "request": "launch",
-      "preLaunchTask": "npm: test",
-      "url": "http://localhost:9876/debug.html"
+      "runtimeExecutable": "${workspaceFolder}/../.tools/node/node.exe",
+      "program": "${workspaceFolder}/node_modules/@angular/cli/bin/ng.js",
+      "args": ["test", "--watch=false"],
+      "cwd": "${workspaceFolder}",
+      "autoAttachChildProcesses": true,
+      "smartStep": true,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "console": "integratedTerminal"
+    },
+    {
+      // The same, for the spec file open in the editor (run it with a *.spec.ts file active).
+      "name": "Vitest: current spec file",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${workspaceFolder}/../.tools/node/node.exe",
+      "program": "${workspaceFolder}/node_modules/@angular/cli/bin/ng.js",
+      "args": ["test", "--watch=false", "--include", "**/${fileBasename}"],
+      "cwd": "${workspaceFolder}",
+      "autoAttachChildProcesses": true,
+      "smartStep": true,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "console": "integratedTerminal"
     }
   ]
 }

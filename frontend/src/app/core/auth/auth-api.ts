@@ -21,9 +21,18 @@ export class AuthApi {
     return createPkce();
   }
 
-  /** Where the auth server sends the browser back to; registered for the eshop-web client. */
+  /**
+   * Where the auth server sends the browser back to; registered for the eshop-web client.
+   * Resolved against <base href>, so it works both at the dev server's root (http://localhost:4200/auth/callback)
+   * and when the backend serves the app under /eshop/ (http://localhost:8080/eshop/auth/callback).
+   */
   redirectUri(): string {
-    return `${this.document.location.origin}/auth/callback`;
+    return new URL('auth/callback', this.document.baseURI).href;
+  }
+
+  /** The app's root URL (its <base href>): where sign-out comes back to. */
+  appUrl(): string {
+    return new URL('.', this.document.baseURI).href;
   }
 
   /** The auth server's sign-in page, as an Authorization Code + PKCE request. */
@@ -70,7 +79,7 @@ export class AuthApi {
   /** OpenID Connect RP-initiated logout: ends the auth server's session too, then comes back to the shop. */
   logoutUrl(idToken: string): string {
     const params = new HttpParams({
-      fromObject: { id_token_hint: idToken, post_logout_redirect_uri: `${this.document.location.origin}/` },
+      fromObject: { id_token_hint: idToken, post_logout_redirect_uri: this.appUrl() },
     });
     return `${AUTH_SERVER}/connect/logout?${params.toString()}`;
   }
