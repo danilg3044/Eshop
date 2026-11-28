@@ -40,6 +40,11 @@ eureka:
 
 eshop:
   frontend-url: ${ESHOP_FRONTEND_URL:http://localhost:4200}
+  # The built Angular app (npm run build:backend), served at http://localhost:8080/eshop/. Relative paths start
+  # in the working directory (backend/ for mvn spring-boot:run). Skipped when the folder has no index.html.
+  frontend-dir: ${FRONTEND_DIR:../frontend/dist/frontend/browser}
+  # cloud/ai-service: /api/ai/** is passed on to it (AiForwardController), for the app served at /eshop/.
+  ai-service-url: ${AI_SERVICE_URL:http://localhost:8084}
 
 springdoc:
   swagger-ui:

@@ -179,6 +179,28 @@ In STS: **File → Import → Maven → Existing Maven Projects**, select `cloud
 
 `npm start` talks to the backend (`:8080`) and the AI service (`:8084`) directly. The backend works without Eureka; it only logs connection warnings. To switch registration off entirely, set `EUREKA_ENABLED=false`.
 
+## Serve the app from the backend (`/eshop`)
+
+The backend can also serve the built Angular app from a folder on disk, so one server (:8080) hosts both the UI and `/api`:
+
+```powershell
+cd frontend; npm run build:backend     # ng build with <base href="/eshop/">, into frontend/dist/frontend/browser
+cd backend; mvn spring-boot:run "-Dspring-boot.run.profiles=local"
+```
+
+Then open http://localhost:8080/eshop/. The auth server must be running as usual, and for AI descriptions also ai-service.
+
+| Setting (env var) | Default | What |
+|---|---|---|
+| `FRONTEND_DIR` | `../frontend/dist/frontend/browser` (relative to `backend/`) | The folder served at `/eshop/`. If it has no `index.html`, the backend is API-only and logs that. |
+| `AI_SERVICE_URL` | `http://localhost:8084` | Where the backend forwards `/api/ai/**`, together with the caller's token. |
+| `ESHOP_BACKEND_URL` (auth server) | `http://localhost:8080` | The auth server accepts `<this>/eshop/auth/callback` as a redirect, and this origin for CORS, next to the dev server's. |
+
+How it works:
+- Files that exist are returned as they are. Every other path under `/eshop/` gets `index.html`, so deep links and reloads (`/eshop/admin/orders`) work. `/` and `/eshop` redirect to `/eshop/`.
+- The folder is read on each request, so a new build shows up without restarting the backend.
+- The app works under any base path, because its sign-in callback and sign-out URLs are resolved against `<base href>`.
+
 ## Tests
 
 | Command (inside a dev-env shell) | What runs |

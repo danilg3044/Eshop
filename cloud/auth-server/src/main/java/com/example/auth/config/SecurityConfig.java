@@ -42,7 +42,7 @@ public class SecurityConfig {
 			authorizationServer.oidc(withDefaults()); // OpenID Connect: id tokens, discovery, userinfo, logout
 		});
 		http.authorizeHttpRequests(authorize -> authorize.anyRequest().authenticated())
-				.cors(withDefaults()) // the Angular app calls /oauth2/token from http://localhost:4200
+				.cors(withDefaults()) // the Angular app calls /oauth2/token from :4200 or :8080
 				.oauth2ResourceServer(resourceServer -> resourceServer.jwt(withDefaults())) // for /userinfo
 				.exceptionHandling(exceptions -> exceptions.defaultAuthenticationEntryPointFor(
 						new LoginUrlAuthenticationEntryPoint("/login"), htmlRequests()));
@@ -74,7 +74,7 @@ public class SecurityConfig {
 	@Bean
 	CorsConfigurationSource corsConfigurationSource(IdentityProperties props) {
 		var config = new CorsConfiguration();
-		config.setAllowedOrigins(List.of(props.frontendUrl()));
+		config.setAllowedOrigins(props.allowedOrigins());
 		config.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
 		config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
 		var source = new UrlBasedCorsConfigurationSource();

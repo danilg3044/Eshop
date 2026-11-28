@@ -4,8 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.net.URI;
@@ -124,6 +127,27 @@ class AuthServerFlowIT {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.issuer").value("http://localhost:9000"))
 				.andExpect(jsonPath("$.jwks_uri").value("http://localhost:9000/oauth2/jwks"));
+	}
+
+	@Test
+	void theAppServedByTheBackendAtEshopMayAlsoSignIn() throws Exception {
+		// its callback is registered too (an unknown redirect_uri would get a 400 error page, not the sign-in page)
+		mvc.perform(get("/oauth2/authorize").accept(MediaType.TEXT_HTML)
+						.queryParam("response_type", "code")
+						.queryParam("client_id", "eshop-web")
+						.queryParam("redirect_uri", "http://localhost:8080/eshop/auth/callback")
+						.queryParam("scope", "openid")
+						.queryParam("state", "s")
+						.queryParam("code_challenge", Pkce.create().challenge())
+						.queryParam("code_challenge_method", "S256"))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("/login"));
+		// and its origin may call the token endpoint from the browser (CORS preflight)
+		mvc.perform(options("/oauth2/token")
+						.header("Origin", "http://localhost:8080")
+						.header("Access-Control-Request-Method", "POST"))
+				.andExpect(status().isOk())
+				.andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:8080"));
 	}
 
 	/** 1. The app sends the browser to /oauth2/authorize; not signed in yet, so it is sent to the sign-in page. */

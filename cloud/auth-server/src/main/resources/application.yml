@@ -30,8 +30,9 @@ spring:
               client-name: EShop web app
               client-authentication-methods: none
               authorization-grant-types: authorization_code
-              redirect-uris: ${ESHOP_FRONTEND_URL:http://localhost:4200}/auth/callback
-              post-logout-redirect-uris: ${ESHOP_FRONTEND_URL:http://localhost:4200}/
+              # The app on the dev server, and the same app served by the backend at /eshop/ (npm run build:backend)
+              redirect-uris: ${ESHOP_FRONTEND_URL:http://localhost:4200}/auth/callback,${ESHOP_BACKEND_URL:http://localhost:8080}/eshop/auth/callback
+              post-logout-redirect-uris: ${ESHOP_FRONTEND_URL:http://localhost:4200}/,${ESHOP_BACKEND_URL:http://localhost:8080}/eshop/
               scopes: openid,profile,email
             require-proof-key: true
             require-authorization-consent: false
@@ -56,6 +57,7 @@ server:
 
 identity:
   frontend-url: ${ESHOP_FRONTEND_URL:http://localhost:4200}
+  allowed-origins: ${ESHOP_FRONTEND_URL:http://localhost:4200},${ESHOP_BACKEND_URL:http://localhost:8080}
   admin:
     # The first admin is created at startup if none exists and a password is set.
     email: ${ESHOP_ADMIN_EMAIL:admin@eshop.local}

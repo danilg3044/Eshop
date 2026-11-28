@@ -37,6 +37,7 @@ cd backend && mvn spring-boot:run -Dspring-boot.run.profiles=local   # needs src
 
 cd frontend && npm start                       # :4200, proxies /api -> :8080 (proxy.conf.json)
 cd frontend && npm run start:gateway           # same, but via the Spring Cloud gateway :8090 (proxy.gateway.conf.json)
+cd frontend && npm run build:backend           # build with base href /eshop/; the backend then serves it at :8080/eshop/
 cd frontend && npx ng build
 cd frontend && npm run test:ci                 # Vitest, single run
 cd frontend && npx ng test --watch=false --include src/app/core/cart/cart.reducer.spec.ts   # single spec
@@ -135,6 +136,19 @@ The packages are `auth`, `user`, `product`, `order`, `admin`, `config` and `comm
   The frontend reads `detail` from these through `core/errors.ts`.
 - Paged endpoints return `common/PageResponse`, not Spring's `Page`.
 
+### The backend serving the Angular app (`/eshop/`)
+
+`config/FrontendConfig` serves `eshop.frontend-dir` (`FRONTEND_DIR`, default `../frontend/dist/frontend/browser`) at `/eshop/`:
+- It is only active if that folder holds an `index.html`.
+- A `PathResourceResolver` returns existing files, and `index.html` for any extension-less path (SPA routes). A missing `*.js`-style path is a real 404.
+- `/eshop/` itself is a view-controller forward to `index.html`, because the resource handler ignores an empty path. In MockMvc, assert it with `forwardedUrl`.
+- `/` and `/eshop` redirect to `/eshop/`. Security permits `/`, `/eshop` and `/eshop/**`.
+
+Related pieces:
+- `ai/AiForwardController` forwards `/api/ai/**` to `eshop.ai-service-url` (`AI_SERVICE_URL`), with the already validated token from `@AuthenticationPrincipal Jwt`. Status and body pass through unchanged; if ai-service is unreachable, it returns a 503.
+- `AuthApi` resolves `redirectUri()` and `appUrl()` (post-logout) against `document.baseURI`, so the same build works at `/` and `/eshop/`.
+- The auth server registers both callbacks (`ESHOP_FRONTEND_URL`, `ESHOP_BACKEND_URL`/eshop). `identity.allowed-origins` holds both origins for CORS.
+
 ### Database
 
 Flyway (`src/main/resources/db/migration`) owns the schema. Hibernate runs with `ddl-auto=validate`, so any entity change needs a new `V<n>__*.sql` migration.
@@ -194,6 +208,7 @@ The shop backend in the gateway:
 ### Frontend layout (`frontend/src/app`)
 
 - `core/`: services (`@Service()` decorator, Angular 22), interceptor, guards, models that mirror the backend DTOs, and `NEXT_STATUSES`, which mirrors `OrderStatus.canTransitionTo`.
+- Each component has its own folder holding `name.ts`, `name.html`, `name.scss` and `name.spec.ts`, e.g. `features/shop/cart/`. Route files (`admin.routes.ts`) and styles shared by several components (`features/auth/auth.scss`) sit one level up, in the area folder.
 - `features/shop`: customer area under `ShopLayout`.
 - `features/admin`: lazy `ADMIN_ROUTES` under `AdminLayout`, behind `adminGuard`. `description-writer/` is the AI description dialog (MatDialog), opened from `AdminProducts`.
 - `features/auth`: `login` (starts the redirect to the auth server) and `oauth-callback` (code + state → `exchangeCode`).
@@ -208,7 +223,6 @@ Patterns used throughout:
   - Each slice lives in its own folder:
     - `core/auth/`: `AuthActions`, `authFeature`, selectors, `AuthEffects`, and `AuthApi` for the stateless HTTP calls.
     - `core/cart/`: `CartActions`, `cartFeature`, selectors, `CartEffects`.
-- Each component has its own folder holding `name.ts`, `name.html`, `name.scss` and `name.spec.ts`, e.g. `features/shop/cart/`. Route files (`admin.routes.ts`) and styles shared by several components (`features/auth/auth.scss`) sit one level up, in the area folder.
   - Both are registered in `app.config.ts`.
   - Components read with `store.selectSignal(selectX)` and write with `store.dispatch(XActions.y(...))`.
   - Reducers and selectors stay pure: no `Date.now()`, no storage. Effects do HTTP, storage and navigation:
